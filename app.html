@@ -526,9 +526,18 @@ function defaultData() {
 function loadData() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) { D = JSON.parse(raw); }
-    else { defaultData(); saveData(); }
-  } catch(e) { defaultData(); }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      D = parsed;
+      if (!D.stocks || D.stocks.length === 0) { defaultData(); saveData(); }
+    } else {
+      defaultData();
+      saveData();
+    }
+  } catch(e) {
+    defaultData();
+    try { saveData(); } catch(e2) {}
+  }
   renderAll();
 }
 
@@ -547,17 +556,18 @@ function pct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
 function gcls(n) { return n >= 0 ? 'green' : 'red'; }
 
 function totals() {
-  const stInv = D.stocks.reduce((a,s) => a + s.qty*s.avg, 0);
-  const stVal = D.stocks.reduce((a,s) => a + s.qty*(s.ltp||s.avg), 0);
-  const mfInv = D.mf.reduce((a,f) => a + f.inv, 0);
-  const mfVal = D.mf.reduce((a,f) => a + f.val, 0);
-  const bankBal = D.banks.reduce((a,b) => a + b.bal, 0);
-  const fdVal = D.fds.reduce((a,f) => a + (f.matamt||f.prin), 0);
-  const fdInv = D.fds.reduce((a,f) => a + f.prin, 0);
-  const loanBal = D.loans.reduce((a,l) => a + l.bal, 0);
-  const emiMo = D.loans.reduce((a,l) => a + l.emi, 0);
-  const ccDue = D.cards.reduce((a,c) => a + c.due, 0);
-  const sipMo = D.mf.reduce((a,f) => a + (f.sip||0), 0);
+  const st = D.stocks||[], mf = D.mf||[], bk = D.banks||[], fd = D.fds||[], ln = D.loans||[], cc = D.cards||[];
+  const stInv = st.reduce((a,s) => a + s.qty*s.avg, 0);
+  const stVal = st.reduce((a,s) => a + s.qty*(s.ltp||s.avg), 0);
+  const mfInv = mf.reduce((a,f) => a + f.inv, 0);
+  const mfVal = mf.reduce((a,f) => a + f.val, 0);
+  const bankBal = bk.reduce((a,b) => a + b.bal, 0);
+  const fdVal = fd.reduce((a,f) => a + (f.matamt||f.prin), 0);
+  const fdInv = fd.reduce((a,f) => a + f.prin, 0);
+  const loanBal = ln.reduce((a,l) => a + l.bal, 0);
+  const emiMo = ln.reduce((a,l) => a + l.emi, 0);
+  const ccDue = cc.reduce((a,c) => a + c.due, 0);
+  const sipMo = mf.reduce((a,f) => a + (f.sip||0), 0);
   const assets = stVal + mfVal + bankBal + fdVal;
   const liab = loanBal + ccDue;
   return {stInv,stVal,mfInv,mfVal,bankBal,fdVal,fdInv,loanBal,emiMo,ccDue,sipMo,assets,liab,netWorth:assets-liab};
@@ -622,16 +632,16 @@ function renderStocks() {
   const t = totals();
   const stPnl = t.stVal - t.stInv;
   const stPct = t.stInv > 0 ? (stPnl/t.stInv)*100 : 0;
-  const wins = D.stocks.filter(s => (s.ltp||s.avg) >= s.avg).length;
+  const wins = (D.stocks||[]).filter(s => (s.ltp||s.avg) >= s.avg).length;
   document.getElementById('st-metrics').innerHTML = [
     {l:'Invested',v:inr(t.stInv),s:'12 holdings'},{l:'Current value',v:inr(t.stVal),s:'live NSE prices'},
     {l:'Total P&L',v:inr(stPnl),s:pct(stPct)+' return',c:gcls(stPnl)},
     {l:'Winners / Losers',v:wins+' / '+(D.stocks.length-wins),s:'of '+D.stocks.length+' stocks',c:wins>D.stocks.length/2?'green':'red'},
   ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
 
-  document.getElementById('nb-st').textContent = D.stocks.length;
-  document.getElementById('st-list').innerHTML = D.stocks.length
-    ? [...D.stocks].sort((a,b)=>((b.ltp||b.avg)-b.avg)/b.avg - ((a.ltp||a.avg)-a.avg)/a.avg).map((s,i) => {
+  document.getElementById('nb-st').textContent = (D.stocks||[]).length;
+  document.getElementById('st-list').innerHTML = (D.stocks||[]).length
+    ? [...(D.stocks||[])].sort((a,b)=>((b.ltp||b.avg)-b.avg)/b.avg - ((a.ltp||a.avg)-a.avg)/a.avg).map((s,i) => {
         const ltp=s.ltp||s.avg, inv=s.qty*s.avg, mv=s.qty*ltp, pl=mv-inv, pp=inv>0?(pl/inv)*100:0;
         const idx = D.stocks.indexOf(s);
         return `<div class="item-row">
@@ -647,18 +657,18 @@ function renderStocks() {
 function renderMF() {
   const t = totals();
   const mfPnl = t.mfVal - t.mfInv;
-  const sipCount = D.mf.filter(f=>f.sip>0).length;
+  const sipCount = (D.mf||[]).filter(f=>f.sip>0).length;
   document.getElementById('mf-metrics').innerHTML = [
     {l:'Total invested',v:inr(t.mfInv),s:D.mf.length+' funds'},{l:'Current value',v:inr(t.mfVal),s:'NAV as of 15-May-2026'},
     {l:'Total gain',v:inr(mfPnl),s:t.mfInv>0?pct((mfPnl/t.mfInv)*100)+' return':'—',c:gcls(mfPnl)},
     {l:'Active SIPs',v:sipCount,s:inr(t.sipMo)+'/month',c:'gold'},
   ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
 
-  document.getElementById('nb-mf').textContent = D.mf.length;
+  document.getElementById('nb-mf').textContent = (D.mf||[]).length;
   const amcColors = {HDFC:'#0ea5e9',Axis:'#8b5cf6',SBI:'#f59e0b'};
-  const amcs = [...new Set(D.mf.map(f=>f.amc))];
+  const amcs = [...new Set((D.mf||[]).map(f=>f.amc))];
   document.getElementById('mf-groups').innerHTML = amcs.map(amc => {
-    const funds = D.mf.filter(f=>f.amc===amc);
+    const funds = (D.mf||[]).filter(f=>f.amc===amc);
     const amcInv = funds.reduce((a,f)=>a+f.inv,0);
     const amcVal = funds.reduce((a,f)=>a+f.val,0);
     const amcPnl = amcVal-amcInv;
@@ -681,9 +691,9 @@ function renderMF() {
 }
 
 function renderBank() {
-  document.getElementById('nb-bank').textContent = D.banks.length + D.fds.length;
-  document.getElementById('bank-list').innerHTML = D.banks.length
-    ? D.banks.map((b,i)=>`<div class="item-row">
+  document.getElementById('nb-bank').textContent = (D.banks||[]).length + (D.fds||[]).length;
+  document.getElementById('bank-list').innerHTML = (D.banks||[]).length
+    ? (D.banks||[]).map((b,i)=>`<div class="item-row">
         <div class="item-icon" style="background:#eff6ff">🏦</div>
         <div class="item-info"><div class="item-name">${b.name}</div><div class="item-meta">${b.type} · ${b.rate}% p.a.</div></div>
         <div class="item-right"><div class="item-val green">${inr(b.bal)}</div><div class="item-sub">balance</div></div>
@@ -691,8 +701,8 @@ function renderBank() {
       </div>`).join('')
     : '<div class="empty"><div class="e-icon">🏦</div>No bank accounts yet.</div>';
 
-  document.getElementById('fd-list').innerHTML = D.fds.length
-    ? D.fds.map((f,i)=>{
+  document.getElementById('fd-list').innerHTML = (D.fds||[]).length
+    ? (D.fds||[]).map((f,i)=>{
         const gain=(f.matamt||f.prin)-f.prin;
         return `<div class="item-row">
           <div class="item-icon" style="background:#fffbeb">🔒</div>
@@ -706,14 +716,14 @@ function renderBank() {
 
 function renderLoans() {
   const t = totals();
-  document.getElementById('nb-loans').textContent = D.loans.length;
+  document.getElementById('nb-loans').textContent = (D.loans||[]).length;
   document.getElementById('loan-metrics').innerHTML = D.loans.length ? [
     {l:'Total outstanding',v:inr(t.loanBal),s:D.loans.length+' loans',c:'red'},
     {l:'Monthly EMI',v:inr(t.emiMo),s:'committed outflow',c:'red'},
     {l:'Annual EMI',v:inr(t.emiMo*12),s:'per year',c:'red'},
   ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('') : '';
-  document.getElementById('loan-list').innerHTML = D.loans.length
-    ? D.loans.map((l,i)=>{
+  document.getElementById('loan-list').innerHTML = (D.loans||[]).length
+    ? (D.loans||[]).map((l,i)=>{
         const totalPay = l.emi*l.rem, interest = Math.max(0,totalPay-l.bal);
         return `<div class="item-row">
           <div class="item-icon" style="background:#fef2f2">📋</div>
@@ -727,14 +737,14 @@ function renderLoans() {
 
 function renderCards() {
   const t = totals();
-  document.getElementById('nb-cards').textContent = D.cards.length;
+  document.getElementById('nb-cards').textContent = (D.cards||[]).length;
   document.getElementById('cc-metrics').innerHTML = D.cards.length ? [
     {l:'Total outstanding',v:inr(t.ccDue),s:'pay in full to avoid interest',c:'red'},
     {l:'Total credit limit',v:inr(D.cards.reduce((a,c)=>a+c.limit,0)),s:'available credit'},
     {l:'Avg utilisation',v:Math.round(D.cards.reduce((a,c)=>a+(c.limit>0?c.due/c.limit:0),0)/Math.max(D.cards.length,1)*100)+'%',s:'keep below 30%',c:'red'},
   ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('') : '';
-  document.getElementById('cc-list').innerHTML = D.cards.length
-    ? D.cards.map((c,i)=>{
+  document.getElementById('cc-list').innerHTML = (D.cards||[]).length
+    ? (D.cards||[]).map((c,i)=>{
         const util = c.limit>0?(c.due/c.limit)*100:0;
         const uColor = util>75?'#ef4444':util>40?'#f59e0b':'#22c55e';
         return `<div class="item-row">
@@ -753,7 +763,7 @@ function renderCards() {
 
 function renderSIPs() {
   const sipMo = D.mf.reduce((a,f)=>a+(f.sip||0),0);
-  const activeSIPs = D.mf.filter(f=>f.sip>0);
+  const activeSIPs = (D.mf||[]).filter(f=>f.sip>0);
   document.getElementById('nb-sip').textContent = activeSIPs.length;
   document.getElementById('sip-metrics').innerHTML = [
     {l:'Monthly outflow',v:inr(sipMo),s:'total SIP commitment',c:'gold'},
@@ -796,8 +806,8 @@ function renderInsights() {
   const t = totals();
   const insights = [];
   insights.push({type:'bad',title:'⚠️ HDFC NIFTY Next50 SIP ends September 2026',desc:'Your ₹5,000/month SIP ends in just 4 months. Log in to HDFC MF portal now and renew it. Missing this means losing compounding momentum.'});
-  const contra = D.mf.find(f=>f.name.includes('Contra'));
-  const mom = D.mf.find(f=>f.name.includes('Momentum'));
+  const contra = (D.mf||[]).find(f=>f.name.includes('Contra'));
+  const mom = (D.mf||[]).find(f=>f.name.includes('Momentum'));
   if(contra||mom) insights.push({type:'bad',title:'Exit SBI underperformers — negative XIRR',desc:`SBI Contra (−0.99% XIRR) and SBI Nifty200 Momentum (−3.63% XIRR) are losing money. Combined ₹1L invested. Exit and redeploy to SBI Multicap Direct or SBI Gold Fund.`});
   if(t.ccDue>0) insights.push({type:'bad',title:'Credit card outstanding — pay immediately',desc:`₹${Math.round(t.ccDue).toLocaleString('en-IN')} outstanding on credit cards. At 36%+ interest, this erases investment gains. Pay in full before due date.`});
   if(t.bankBal < t.emiMo*6) insights.push({type:'warn',title:'Emergency fund too low',desc:`Your bank balance should cover 6 months of expenses. Build ₹2–3L emergency buffer in a liquid fund like Axis Ultra Short Duration.`});
@@ -846,7 +856,7 @@ function renderReport() {
         <thead><tr><th>Category</th><th>Count</th><th>Invested</th><th>Current value</th><th>Gain / Loss</th><th>Return %</th></tr></thead>
         <tbody>
           <tr><td>Direct stocks (NSE)</td><td>${D.stocks.length}</td><td>${inr(t.stInv)}</td><td>${inr(t.stVal)}</td><td class="${gcls(t.stVal-t.stInv)}">${inr(t.stVal-t.stInv)}</td><td class="${gcls(t.stVal-t.stInv)}">${t.stInv>0?pct((t.stVal-t.stInv)/t.stInv*100):'—'}</td></tr>
-          ${['HDFC','Axis','SBI'].map(amc=>{const fi=D.mf.filter(f=>f.amc===amc);const ai=fi.reduce((a,f)=>a+f.inv,0),av=fi.reduce((a,f)=>a+f.val,0);return`<tr><td>${amc} Mutual Funds</td><td>${fi.length}</td><td>${inr(ai)}</td><td>${inr(av)}</td><td class="${gcls(av-ai)}">${inr(av-ai)}</td><td class="${gcls(av-ai)}">${ai>0?pct((av-ai)/ai*100):'—'}</td></tr>`;}).join('')}
+          ${['HDFC','Axis','SBI'].map(amc=>{const fi=(D.mf||[]).filter(f=>f.amc===amc);const ai=fi.reduce((a,f)=>a+f.inv,0),av=fi.reduce((a,f)=>a+f.val,0);return`<tr><td>${amc} Mutual Funds</td><td>${fi.length}</td><td>${inr(ai)}</td><td>${inr(av)}</td><td class="${gcls(av-ai)}">${inr(av-ai)}</td><td class="${gcls(av-ai)}">${ai>0?pct((av-ai)/ai*100):'—'}</td></tr>`;}).join('')}
           <tr><td>Bank accounts</td><td>${D.banks.length}</td><td>—</td><td class="green">${inr(t.bankBal)}</td><td>—</td><td>—</td></tr>
           <tr><td>Fixed deposits</td><td>${D.fds.length}</td><td>${inr(t.fdInv)}</td><td class="green">${inr(t.fdVal)}</td><td class="green">${inr(t.fdVal-t.fdInv)}</td><td>—</td></tr>
           <tr style="color:var(--danger)"><td>Loans (liability)</td><td>${D.loans.length}</td><td>—</td><td class="red">−${inr(t.loanBal)}</td><td class="red">EMI: ${inr(t.emiMo)}/mo</td><td>—</td></tr>
