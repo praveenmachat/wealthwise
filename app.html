@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthWise App — Personal Finance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink: #0f0f0f;
+  --ink-soft: #4a4a4a;
+  --ink-muted: #8a8a8a;
+  --paper: #faf9f6;
+  --paper-warm: #f2f0eb;
+  --paper-mid: #e8e5de;
+  --accent: #1a472a;
+  --accent-light: #2d6a4f;
+  --accent-gold: #c8a84b;
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --info: #2563eb;
+  --info-bg: #eff6ff;
+  --serif: 'DM Serif Display', serif;
+  --sans: 'DM Sans', sans-serif;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.5; }
+
+/* TOPBAR */
+.topbar {
+  background: var(--ink); color: white;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem; height: 52px; position: sticky; top: 0; z-index: 100;
+}
+.topbar-logo { font-family: var(--serif); font-size: 1.25rem; }
+.topbar-logo span { color: var(--accent-gold); }
+.topbar-right { display: flex; align-items: center; gap: 1rem; }
+.topbar-user { font-size: 0.75rem; color: rgba(255,255,255,0.6); }
+.topbar-refresh { background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: 0.75rem; font-family: var(--sans); display: flex; align-items: center; gap: 5px; }
+.topbar-refresh:hover { background: rgba(255,255,255,0.2); }
+.back-link { font-size: 0.75rem; color: rgba(255,255,255,0.5); text-decoration: none; }
+.back-link:hover { color: white; }
+
+/* LAYOUT */
+.app-layout { display: flex; min-height: calc(100vh - 52px); }
+
+/* SIDEBAR */
+.sidebar {
+  width: 200px; background: white; border-right: 1px solid var(--paper-mid);
+  padding: 1.5rem 0; flex-shrink: 0; position: sticky; top: 52px;
+  height: calc(100vh - 52px); overflow-y: auto;
+}
+.sidebar-section { padding: 0 0.75rem; margin-bottom: 0.5rem; }
+.sidebar-label { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); padding: 0 0.75rem; margin-bottom: 0.4rem; margin-top: 1rem; }
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0.55rem 0.75rem; border-radius: var(--radius); cursor: pointer;
+  font-size: 0.82rem; font-weight: 500; color: var(--ink-soft);
+  transition: background 0.15s, color 0.15s; width: 100%; border: none; background: none; text-align: left;
+}
+.nav-item:hover { background: var(--paper-warm); color: var(--ink); }
+.nav-item.active { background: var(--accent); color: white; }
+.nav-item .icon { font-size: 1rem; width: 18px; text-align: center; }
+.nav-badge { margin-left: auto; font-size: 0.65rem; background: var(--paper-mid); color: var(--ink-soft); padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+.nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: white; }
+
+/* MAIN CONTENT */
+.main { flex: 1; padding: 1.5rem; overflow-x: hidden; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* PAGE HEADER */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 8px; }
+.page-title { font-family: var(--serif); font-size: 1.5rem; color: var(--ink); }
+.page-sub { font-size: 0.8rem; color: var(--ink-muted); margin-top: 2px; }
+.add-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 0.5rem 1rem; background: var(--accent); color: white;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  font-size: 0.8rem; font-weight: 500; font-family: var(--sans);
+  transition: background 0.15s;
+}
+.add-btn:hover { background: var(--accent-light); }
+
+/* METRIC GRID */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.mcard { background: white; border: 1px solid var(--paper-mid); border-radius: var(--radius-lg); padding: 1rem 1.1rem; }
+.mcard .ml { font-size: 0.7rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.mcard .mv { font-size: 1.25rem; font-weight: 600; color: var(--ink); }
+.mcard .ms { font-size: 0.72rem; color: var(--ink-muted); margin-top: 2px; }
+.green { color: var(--success) !important; }
+.red { color: var(--danger) !important; }
+.gold { color: var(--accent-gold) !important; }
+
+/* CHARTS ROW */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+.chart-card { background: white; border: 1px solid var(--paper-mid); border-radius: var(--radius-lg); padding: 1.1rem; }
+.chart-card h3 { font-size: 0.8rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+.chart-wrap { position: relative; height: 180px; }
+
+/* ALLOC BAR */
+.alloc-bar { height: 10px; border-radius: 5px; overflow: hidden; display: flex; margin: 0.5rem 0 0.4rem; }
+.alloc-seg { height: 100%; transition: width 0.6s ease; }
+.alloc-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.leg { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--ink-soft); }
+.leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ITEM CARDS */
+.items-wrap { display: flex; flex-direction: column; gap: 6px; }
+.item-row {
+  background: white; border: 1px solid var(--paper-mid); border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem; display: flex; align-items: center; gap: 10px;
+  transition: border-color 0.15s;
+}
+.item-row:hover { border-color: var(--paper-mid); background: var(--paper); }
+.item-icon { width: 36px; height: 36px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 0.85rem; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { font-size: 0.72rem; color: var(--ink-muted); margin-top: 1px; }
+.item-right { text-align: right; flex-shrink: 0; }
+.item-val { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+.item-sub { font-size: 0.72rem; margin-top: 1px; font-weight: 500; }
+.del-btn { background: none; border: none; color: var(--ink-muted); cursor: pointer; padding: 4px; border-radius: 4px; font-size: 0.85rem; line-height: 1; flex-shrink: 0; }
+.del-btn:hover { color: var(--danger); background: var(--danger-bg); }
+.badge { display: inline-block; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+
+/* SECTION LABEL */
+.sec-lbl { font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 1.2rem 0 0.6rem; display: flex; align-items: center; justify-content: space-between; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: var(--radius-lg); padding: 1.5rem; width: 90%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
+.modal h3 { font-family: var(--serif); font-size: 1.2rem; margin-bottom: 1rem; }
+.field { margin-bottom: 0.75rem; }
+.field label { font-size: 0.75rem; font-weight: 500; color: var(--ink-soft); display: block; margin-bottom: 3px; }
+.field input, .field select {
+  width: 100%; padding: 0.5rem 0.7rem; border: 1px solid var(--paper-mid);
+  border-radius: var(--radius); font-family: var(--sans); font-size: 0.85rem;
+  background: white; color: var(--ink); outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.1rem; }
+.btn-cancel { padding: 0.5rem 1rem; border: 1px solid var(--paper-mid); border-radius: var(--radius); background: none; cursor: pointer; font-family: var(--sans); font-size: 0.82rem; color: var(--ink-soft); }
+.btn-save { padding: 0.5rem 1.25rem; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-family: var(--sans); font-size: 0.82rem; font-weight: 600; }
+
+/* INSIGHTS */
+.insight { background: white; border: 1px solid var(--paper-mid); border-radius: var(--radius-lg); padding: 0.9rem 1rem; margin-bottom: 8px; border-left: 3px solid transparent; }
+.insight.good { border-left-color: var(--success); }
+.insight.warn { border-left-color: var(--warning); }
+.insight.bad { border-left-color: var(--danger); }
+.insight .it { font-size: 0.85rem; font-weight: 600; margin-bottom: 3px; }
+.insight .id { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.55; }
+
+/* REPORT TABLE */
+.rtbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.rtbl th { font-size: 0.7rem; color: var(--ink-muted); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--paper-mid); font-weight: 600; white-space: nowrap; }
+.rtbl th:first-child { text-align: left; }
+.rtbl td { padding: 7px 8px; border-bottom: 1px solid var(--paper-warm); text-align: right; }
+.rtbl td:first-child { text-align: left; font-weight: 500; }
+.rtbl tr:last-child td { border-bottom: none; font-weight: 600; background: var(--paper-warm); }
+.rtbl tr:hover td { background: var(--paper-warm); }
+
+/* UTILISATION BAR */
+.util-bar { height: 4px; border-radius: 2px; background: var(--paper-mid); overflow: hidden; margin-top: 4px; }
+.util-fill { height: 100%; border-radius: 2px; }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 2.5rem; color: var(--ink-muted); font-size: 0.85rem; border: 1px dashed var(--paper-mid); border-radius: var(--radius-lg); background: white; }
+.empty .e-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+/* PROGRESS */
+.progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
+.progress-row .pl { font-size: 0.78rem; color: var(--ink-soft); min-width: 150px; }
+.prog-bg { flex: 1; height: 5px; border-radius: 3px; background: var(--paper-mid); overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; }
+.progress-row .pv { font-size: 0.72rem; font-weight: 600; min-width: 36px; text-align: right; }
+
+/* LOADING PULSE */
+.pulse { animation: pulse 1.2s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* NET WORTH BANNER */
+.nw-banner {
+  background: var(--ink); color: white; border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
+  display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;
+}
+.nw-item .nl { font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.nw-item .nv { font-family: var(--serif); font-size: 1.6rem; color: white; }
+.nw-item .nv.big { font-size: 2rem; }
+
+/* RESPONSIVE */
+@media(max-width: 768px) {
+  .sidebar { display: none; }
+  .charts-row { grid-template-columns: 1fr; }
+  .field-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:1rem">
+    <a href="index.html" class="back-link">← Website</a>
+    <div class="topbar-logo">Wealth<span>Wise</span></div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-user">Praveen M S · Age 39 · Dubai</span>
+    <button class="topbar-refresh" onclick="refreshStocks()">⟳ Refresh prices</button>
+  </div>
+</div>
+
+<div class="app-layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-label">Overview</div>
+  <div class="sidebar-section">
+    <button class="nav-item active" onclick="goTo('dashboard')"><span class="icon">◉</span> Dashboard</button>
+    <button class="nav-item" onclick="goTo('report')"><span class="icon">📄</span> Full report</button>
+  </div>
+  <div class="sidebar-label">Investments</div>
+  <div class="sidebar-section">
+    <button class="nav-item" onclick="goTo('stocks')"><span class="icon">📈</span> Stocks <span class="nav-badge" id="nb-st">12</span></button>
+    <button class="nav-item" onclick="goTo('mf')"><span class="icon">📊</span> Mutual Funds <span class="nav-badge" id="nb-mf">18</span></button>
+  </div>
+  <div class="sidebar-label">Accounts</div>
+  <div class="sidebar-section">
+    <button class="nav-item" onclick="goTo('bank')"><span class="icon">🏦</span> Bank & FD <span class="nav-badge" id="nb-bank">0</span></button>
+    <button class="nav-item" onclick="goTo('loans')"><span class="icon">📋</span> Loans <span class="nav-badge" id="nb-loans">0</span></button>
+    <button class="nav-item" onclick="goTo('cards')"><span class="icon">💳</span> Credit Cards <span class="nav-badge" id="nb-cards">0</span></button>
+  </div>
+  <div class="sidebar-label">Planning</div>
+  <div class="sidebar-section">
+    <button class="nav-item" onclick="goTo('sip')"><span class="icon">🔄</span> SIP Tracker <span class="nav-badge" id="nb-sip">9</span></button>
+    <button class="nav-item" onclick="goTo('insights')"><span class="icon">🧠</span> Insights</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Complete financial overview · Updated <span id="last-update">—</span></div></div>
+  </div>
+  <div class="nw-banner">
+    <div class="nw-item"><div class="nl">Net worth</div><div class="nv big" id="d-nw">Calculating…</div></div>
+    <div class="nw-item"><div class="nl">Total assets</div><div class="nv" id="d-assets">—</div></div>
+    <div class="nw-item"><div class="nl">Total liabilities</div><div class="nv" id="d-liab" style="color:#f87171">—</div></div>
+    <div class="nw-item"><div class="nl">Investment gain</div><div class="nv" id="d-gain">—</div></div>
+  </div>
+  <div class="metric-grid" id="d-metrics"></div>
+  <div style="background:white;border:1px solid var(--paper-mid);border-radius:var(--radius-lg);padding:1rem;margin-bottom:1.25rem">
+    <div style="font-size:0.72rem;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Portfolio allocation</div>
+    <div class="alloc-bar" id="d-bar"></div>
+    <div class="alloc-legend" id="d-legend"></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card"><h3>Asset breakdown</h3><div class="chart-wrap"><canvas id="donut-canvas"></canvas></div></div>
+    <div class="chart-card"><h3>P&L by category</h3><div class="chart-wrap"><canvas id="pnl-canvas"></canvas></div></div>
+  </div>
+</div>
+
+<!-- STOCKS -->
+<div class="page" id="page-stocks">
+  <div class="page-header">
+    <div><div class="page-title">Direct stocks</div><div class="page-sub">NSE holdings with live prices</div></div>
+    <button class="add-btn" onclick="openModal('stock')">+ Add stock</button>
+  </div>
+  <div class="metric-grid" id="st-metrics"></div>
+  <div class="items-wrap" id="st-list"></div>
+</div>
+
+<!-- MUTUAL FUNDS -->
+<div class="page" id="page-mf">
+  <div class="page-header">
+    <div><div class="page-title">Mutual funds</div><div class="page-sub">All AMC holdings — equity, debt, gold, index</div></div>
+    <button class="add-btn" onclick="openModal('mf')">+ Add fund</button>
+  </div>
+  <div class="metric-grid" id="mf-metrics"></div>
+  <div id="mf-groups"></div>
+</div>
+
+<!-- BANK & FD -->
+<div class="page" id="page-bank">
+  <div class="page-header">
+    <div><div class="page-title">Bank & fixed deposits</div><div class="page-sub">Cash, savings and term deposits</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="add-btn" onclick="openModal('bank')">+ Bank account</button>
+      <button class="add-btn" style="background:#854F0B" onclick="openModal('fd')">+ Fixed deposit</button>
+    </div>
+  </div>
+  <div class="sec-lbl">Bank accounts</div>
+  <div class="items-wrap" id="bank-list"></div>
+  <div class="sec-lbl">Fixed deposits</div>
+  <div class="items-wrap" id="fd-list"></div>
+</div>
+
+<!-- LOANS -->
+<div class="page" id="page-loans">
+  <div class="page-header">
+    <div><div class="page-title">Loans</div><div class="page-sub">All outstanding loans and EMIs</div></div>
+    <button class="add-btn" style="background:var(--danger)" onclick="openModal('loan')">+ Add loan</button>
+  </div>
+  <div class="metric-grid" id="loan-metrics"></div>
+  <div class="items-wrap" id="loan-list"></div>
+</div>
+
+<!-- CREDIT CARDS -->
+<div class="page" id="page-cards">
+  <div class="page-header">
+    <div><div class="page-title">Credit cards</div><div class="page-sub">Outstanding dues and credit utilisation</div></div>
+    <button class="add-btn" style="background:var(--danger)" onclick="openModal('cc')">+ Add card</button>
+  </div>
+  <div class="metric-grid" id="cc-metrics"></div>
+  <div class="items-wrap" id="cc-list"></div>
+</div>
+
+<!-- SIP TRACKER -->
+<div class="page" id="page-sip">
+  <div class="page-header">
+    <div><div class="page-title">SIP tracker</div><div class="page-sub">All systematic investment plans</div></div>
+  </div>
+  <div class="metric-grid" id="sip-metrics"></div>
+  <div class="sec-lbl">HDFC SIPs — ₹10,000/month</div>
+  <div class="items-wrap" id="hdfc-sip-list"></div>
+  <div class="sec-lbl">SBI SIPs — ₹20,000/month</div>
+  <div class="items-wrap" id="sbi-sip-list"></div>
+</div>
+
+<!-- INSIGHTS -->
+<div class="page" id="page-insights">
+  <div class="page-header">
+    <div><div class="page-title">Smart insights</div><div class="page-sub">Personalised recommendations for Praveen · Age 39</div></div>
+  </div>
+  <div id="insights-list"></div>
+  <div class="sec-lbl" style="margin-top:1.5rem">Portfolio health scores</div>
+  <div style="background:white;border:1px solid var(--paper-mid);border-radius:var(--radius-lg);padding:1.1rem" id="health-scores"></div>
+</div>
+
+<!-- REPORT -->
+<div class="page" id="page-report">
+  <div class="page-header">
+    <div><div class="page-title">Full financial report</div><div class="page-sub">Complete net worth statement · May 2026</div></div>
+    <button class="add-btn" onclick="window.print()">🖨 Print report</button>
+  </div>
+  <div id="report-content"></div>
+</div>
+
+</main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-stock">
+  <div class="modal">
+    <h3>Add stock holding</h3>
+    <div class="field"><label>NSE symbol</label><input id="s-sym" placeholder="e.g. RELIANCE, TCS, INFY"></div>
+    <div class="field-row">
+      <div class="field"><label>Quantity</label><input id="s-qty" type="number" placeholder="100"></div>
+      <div class="field"><label>Avg buy price (₹)</label><input id="s-avg" type="number" step="0.01" placeholder="2500.00"></div>
+    </div>
+    <div class="field"><label>Current price / LTP (₹) — optional</label><input id="s-ltp" type="number" step="0.01" placeholder="Leave blank to use avg"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('stock')">Cancel</button>
+      <button class="btn-save" onclick="saveStock()">Save holding</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-mf">
+  <div class="modal">
+    <h3>Add mutual fund</h3>
+    <div class="field"><label>Fund name</label><input id="mf-name" placeholder="e.g. Axis NIFTY 50 Index Fund"></div>
+    <div class="field-row">
+      <div class="field"><label>AMC</label><select id="mf-amc"><option>HDFC</option><option>Axis</option><option>SBI</option><option>Mirae Asset</option><option>Parag Parikh</option><option>DSP</option><option>ICICI Prudential</option><option>Kotak</option><option>Nippon</option><option>UTI</option><option>Other</option></select></div>
+      <div class="field"><label>Fund type</label><select id="mf-type"><option>Equity</option><option>Index</option><option>Debt</option><option>Hybrid</option><option>Gold/Silver</option><option>Liquid</option><option>ELSS</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Amount invested (₹)</label><input id="mf-inv" type="number" placeholder="50000"></div>
+      <div class="field"><label>Current value (₹)</label><input id="mf-val" type="number" placeholder="58000"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Units</label><input id="mf-units" type="number" step="0.001" placeholder="1234.567"></div>
+      <div class="field"><label>NAV (₹)</label><input id="mf-nav" type="number" step="0.001" placeholder="47.230"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>XIRR (%)</label><input id="mf-xirr" type="number" step="0.01" placeholder="12.50"></div>
+      <div class="field"><label>SIP amount (₹/mo)</label><input id="mf-sip" type="number" placeholder="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('mf')">Cancel</button>
+      <button class="btn-save" onclick="saveMF()">Save fund</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-bank">
+  <div class="modal">
+    <h3>Add bank account</h3>
+    <div class="field"><label>Bank name</label><input id="b-name" placeholder="e.g. SBI, HDFC Bank, ICICI"></div>
+    <div class="field-row">
+      <div class="field"><label>Account type</label><select id="b-type"><option>Savings</option><option>Current</option><option>Salary</option></select></div>
+      <div class="field"><label>Balance (₹)</label><input id="b-bal" type="number" placeholder="50000"></div>
+    </div>
+    <div class="field"><label>Interest rate (% p.a.)</label><input id="b-rate" type="number" step="0.1" placeholder="3.5"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('bank')">Cancel</button>
+      <button class="btn-save" onclick="saveBank()">Save account</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-fd">
+  <div class="modal">
+    <h3>Add fixed deposit</h3>
+    <div class="field"><label>Bank / institution</label><input id="fd-bank" placeholder="e.g. SBI, Post Office, HDFC"></div>
+    <div class="field-row">
+      <div class="field"><label>Principal (₹)</label><input id="fd-prin" type="number" placeholder="100000"></div>
+      <div class="field"><label>Interest rate (%)</label><input id="fd-rate" type="number" step="0.1" placeholder="7.1"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Start date</label><input id="fd-start" type="date"></div>
+      <div class="field"><label>Maturity date</label><input id="fd-mat" type="date"></div>
+    </div>
+    <div class="field"><label>Maturity amount (₹)</label><input id="fd-matamt" type="number" placeholder="107100"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('fd')">Cancel</button>
+      <button class="btn-save" onclick="saveFD()">Save FD</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-loan">
+  <div class="modal">
+    <h3>Add loan</h3>
+    <div class="field-row">
+      <div class="field"><label>Loan type</label><select id="l-type"><option>Home Loan</option><option>Car Loan</option><option>Personal Loan</option><option>Education Loan</option><option>Business Loan</option><option>Gold Loan</option><option>Loan Against MF</option><option>Other</option></select></div>
+      <div class="field"><label>Lender</label><input id="l-bank" placeholder="e.g. SBI Home Loans"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Outstanding (₹)</label><input id="l-bal" type="number" placeholder="2500000"></div>
+      <div class="field"><label>Rate (% p.a.)</label><input id="l-rate" type="number" step="0.1" placeholder="8.5"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>EMI / month (₹)</label><input id="l-emi" type="number" placeholder="22000"></div>
+      <div class="field"><label>Months remaining</label><input id="l-rem" type="number" placeholder="180"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('loan')">Cancel</button>
+      <button class="btn-save" onclick="saveLoan()">Save loan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-cc">
+  <div class="modal">
+    <h3>Add credit card</h3>
+    <div class="field"><label>Card name</label><input id="cc-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK"></div>
+    <div class="field-row">
+      <div class="field"><label>Credit limit (₹)</label><input id="cc-limit" type="number" placeholder="300000"></div>
+      <div class="field"><label>Outstanding due (₹)</label><input id="cc-due" type="number" placeholder="25000"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Minimum due (₹)</label><input id="cc-min" type="number" placeholder="1250"></div>
+      <div class="field"><label>Due date</label><input id="cc-duedate" type="date"></div>
+    </div>
+    <div class="field"><label>Interest rate (% p.a.)</label><input id="cc-rate" type="number" step="0.1" placeholder="36"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('cc')">Cancel</button>
+      <button class="btn-save" onclick="saveCC()">Save card</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'wealthwise_v2';
+let D = { stocks:[], mf:[], banks:[], fds:[], loans:[], cards:[] };
+let donutChart = null, pnlChart = null;
+
+function defaultData() {
+  D.stocks = [
+    {sym:'ASHOKLEY',qty:200,avg:168.11,ltp:153.13},{sym:'BAJFINANCE',qty:50,avg:895.17,ltp:910.45},
+    {sym:'BALKRISIND',qty:10,avg:2086.29,ltp:2148.30},{sym:'COALINDIA',qty:100,avg:443.85,ltp:462.20},
+    {sym:'HDFCBANK',qty:80,avg:784.01,ltp:767.50},{sym:'IOC',qty:150,avg:142.15,ltp:134.48},
+    {sym:'ITC',qty:75,avg:303.33,ltp:309.45},{sym:'JYOTHYLAB',qty:150,avg:250.64,ltp:219.30},
+    {sym:'RELIANCE',qty:20,avg:1350.71,ltp:1336.40},{sym:'SUNPHARMA',qty:20,avg:1722.22,ltp:1878.20},
+    {sym:'THERMAX',qty:15,avg:3745.07,ltp:4500.40},{sym:'VBL',qty:30,avg:432.08,ltp:503.80}
+  ];
+  D.mf = [
+    {name:'HDFC NIFTY Next50 Index Fund',amc:'HDFC',type:'Index',inv:270000,val:359672,xirr:null,sip:5000,units:21990.392,nav:16.355},
+    {name:'HDFC Large Cap Fund',amc:'HDFC',type:'Equity',inv:14000,val:13356,xirr:null,sip:2000,units:11.363,nav:1175.449},
+    {name:'HDFC Large & Mid Cap Fund',amc:'HDFC',type:'Equity',inv:7000,val:6841,xirr:null,sip:1000,units:19.584,nav:349.358},
+    {name:'HDFC Mid Cap Fund',amc:'HDFC',type:'Equity',inv:7000,val:6946,xirr:null,sip:1000,units:31.804,nav:218.423},
+    {name:'HDFC Small Cap Fund',amc:'HDFC',type:'Equity',inv:7000,val:6875,xirr:null,sip:1000,units:45.477,nav:151.18},
+    {name:'Axis NIFTY 50 Index Fund (SIP)',amc:'Axis',type:'Index',inv:260000,val:301000,xirr:6.9,sip:0,units:null,nav:null},
+    {name:'Axis NIFTY500 Value 50 Index Fund',amc:'Axis',type:'Index',inv:200000,val:235000,xirr:10.9,sip:0,units:null,nav:null},
+    {name:'Axis Ultra Short Duration Fund',amc:'Axis',type:'Debt',inv:50000,val:54405,xirr:7.1,sip:0,units:null,nav:null},
+    {name:'Axis Gold Fund',amc:'Axis',type:'Gold/Silver',inv:35000,val:38118,xirr:37.8,sip:0,units:null,nav:null},
+    {name:'Axis NIFTY 50 Index Fund (Lumpsum)',amc:'Axis',type:'Index',inv:25000,val:35943,xirr:8.8,sip:0,units:null,nav:null},
+    {name:'Axis Silver Fund of Fund',amc:'Axis',type:'Gold/Silver',inv:20000,val:24861,xirr:104.7,sip:2500,units:null,nav:null},
+    {name:'SBI Multicap Fund - Regular Growth',amc:'SBI',type:'Equity',inv:105000,val:138859,xirr:11.29,sip:0,units:8452.139,nav:16.4289},
+    {name:'SBI Automotive Opportunities Fund',amc:'SBI',type:'Equity',inv:100000,val:113306,xirr:6.61,sip:0,units:9999.5,nav:11.3312},
+    {name:'SBI Gold Fund - Regular Growth',amc:'SBI',type:'Gold/Silver',inv:25000,val:28263,xirr:51.16,sip:5000,units:620.353,nav:45.5604},
+    {name:'SBI Multicap Fund - Direct Growth',amc:'SBI',type:'Equity',inv:70000,val:71263,xirr:6.02,sip:5000,units:4175.279,nav:17.0679},
+    {name:'SBI Silver ETF Fund of Fund',amc:'SBI',type:'Gold/Silver',inv:10000,val:10318,xirr:24.04,sip:2500,units:371.385,nav:27.7833},
+    {name:'SBI Innovative Opportunities Fund',amc:'SBI',type:'Equity',inv:7500,val:7603,xirr:14.06,sip:2500,units:847.716,nav:8.9697},
+    {name:'SBI Contra Fund - Regular Growth',amc:'SBI',type:'Equity',inv:60860,val:60759,xirr:-0.99,sip:0,units:164.143,nav:370.1624},
+    {name:'SBI Nifty200 Momentum 30 Index Fund',amc:'SBI',type:'Index',inv:40000,val:39321,xirr:-3.63,sip:5000,units:4104.243,nav:9.5806}
+  ];
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) { D = JSON.parse(raw); }
+    else { defaultData(); saveData(); }
+  } catch(e) { defaultData(); }
+  renderAll();
+}
+
+function saveData() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(D)); } catch(e) {}
+}
+
+function inr(n) {
+  const a = Math.abs(n), s = n < 0 ? '−' : '';
+  if (a >= 10000000) return s + '₹' + (a/10000000).toFixed(2) + ' Cr';
+  if (a >= 100000) return s + '₹' + (a/100000).toFixed(2) + 'L';
+  if (a >= 1000) return s + '₹' + (a/1000).toFixed(1) + 'K';
+  return s + '₹' + Math.round(a).toLocaleString('en-IN');
+}
+function pct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+function gcls(n) { return n >= 0 ? 'green' : 'red'; }
+
+function totals() {
+  const stInv = D.stocks.reduce((a,s) => a + s.qty*s.avg, 0);
+  const stVal = D.stocks.reduce((a,s) => a + s.qty*(s.ltp||s.avg), 0);
+  const mfInv = D.mf.reduce((a,f) => a + f.inv, 0);
+  const mfVal = D.mf.reduce((a,f) => a + f.val, 0);
+  const bankBal = D.banks.reduce((a,b) => a + b.bal, 0);
+  const fdVal = D.fds.reduce((a,f) => a + (f.matamt||f.prin), 0);
+  const fdInv = D.fds.reduce((a,f) => a + f.prin, 0);
+  const loanBal = D.loans.reduce((a,l) => a + l.bal, 0);
+  const emiMo = D.loans.reduce((a,l) => a + l.emi, 0);
+  const ccDue = D.cards.reduce((a,c) => a + c.due, 0);
+  const sipMo = D.mf.reduce((a,f) => a + (f.sip||0), 0);
+  const assets = stVal + mfVal + bankBal + fdVal;
+  const liab = loanBal + ccDue;
+  return {stInv,stVal,mfInv,mfVal,bankBal,fdVal,fdInv,loanBal,emiMo,ccDue,sipMo,assets,liab,netWorth:assets-liab};
+}
+
+function renderDashboard() {
+  const t = totals();
+  const totalInv = t.stInv + t.mfInv;
+  const totalVal = t.stVal + t.mfVal;
+  const gain = totalVal - totalInv;
+  const gainPct = totalInv > 0 ? (gain/totalInv)*100 : 0;
+
+  document.getElementById('d-nw').textContent = inr(t.netWorth);
+  document.getElementById('d-nw').className = 'nv big ' + gcls(t.netWorth);
+  document.getElementById('d-assets').textContent = inr(t.assets);
+  document.getElementById('d-liab').textContent = inr(t.liab);
+  document.getElementById('d-gain').textContent = inr(gain) + ' (' + pct(gainPct) + ')';
+  document.getElementById('d-gain').className = 'nv ' + gcls(gain);
+
+  document.getElementById('d-metrics').innerHTML = [
+    {l:'Stocks value', v:inr(t.stVal), s:inr(t.stVal-t.stInv)+' P&L', c:gcls(t.stVal-t.stInv)},
+    {l:'Mutual funds', v:inr(t.mfVal), s:inr(t.mfVal-t.mfInv)+' gain', c:gcls(t.mfVal-t.mfInv)},
+    {l:'Bank + FD', v:inr(t.bankBal+t.fdVal), s:'liquid + deposits', c:''},
+    {l:'Monthly SIP', v:inr(t.sipMo), s:'₹'+Math.round(t.sipMo*12/1000)+'K per year', c:'gold'},
+    {l:'Monthly EMI', v:inr(t.emiMo), s:D.loans.length+' active loans', c:t.emiMo>0?'red':''},
+    {l:'CC outstanding', v:inr(t.ccDue), s:D.cards.length+' cards', c:t.ccDue>0?'red':''},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
+
+  const cats = [
+    {l:'Stocks',v:t.stVal,c:'#7c3aed'},{l:'HDFC MF',v:D.mf.filter(f=>f.amc==='HDFC').reduce((a,f)=>a+f.val,0),c:'#0ea5e9'},
+    {l:'Axis MF',v:D.mf.filter(f=>f.amc==='Axis').reduce((a,f)=>a+f.val,0),c:'#8b5cf6'},
+    {l:'SBI MF',v:D.mf.filter(f=>f.amc==='SBI').reduce((a,f)=>a+f.val,0),c:'#f59e0b'},
+    {l:'Bank',v:t.bankBal,c:'#22c55e'},{l:'FD',v:t.fdVal,c:'#84cc16'},
+  ].filter(c=>c.v>0);
+  const tot = cats.reduce((a,c)=>a+c.v,0)||1;
+  document.getElementById('d-bar').innerHTML = cats.map(c=>`<div class="alloc-seg" style="width:${Math.round(c.v/tot*100)}%;background:${c.c}"></div>`).join('');
+  document.getElementById('d-legend').innerHTML = cats.map(c=>`<div class="leg"><div class="leg-dot" style="background:${c.c}"></div>${c.l}: ${inr(c.v)}</div>`).join('');
+
+  if(donutChart) donutChart.destroy();
+  donutChart = new Chart(document.getElementById('donut-canvas').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:cats.map(c=>c.l),datasets:[{data:cats.map(c=>c.v),backgroundColor:cats.map(c=>c.c),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}}}
+  });
+
+  const amcs = ['HDFC','Axis','SBI'];
+  const pnlData = [
+    {l:'Stocks',v:t.stVal-t.stInv,c:'#7c3aed'},
+    ...amcs.map(a=>({l:a+' MF',v:D.mf.filter(f=>f.amc===a).reduce((s,f)=>s+f.val-f.inv,0),c:a==='HDFC'?'#0ea5e9':a==='Axis'?'#8b5cf6':'#f59e0b'}))
+  ];
+  if(pnlChart) pnlChart.destroy();
+  pnlChart = new Chart(document.getElementById('pnl-canvas').getContext('2d'),{
+    type:'bar',
+    data:{labels:pnlData.map(p=>p.l),datasets:[{data:pnlData.map(p=>Math.round(p.v)),backgroundColor:pnlData.map(p=>p.v>=0?p.c+'cc':'#ef4444cc'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:v=>inr(v)},grid:{color:'rgba(0,0,0,0.05)'}}}}
+  });
+
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderStocks() {
+  const t = totals();
+  const stPnl = t.stVal - t.stInv;
+  const stPct = t.stInv > 0 ? (stPnl/t.stInv)*100 : 0;
+  const wins = D.stocks.filter(s => (s.ltp||s.avg) >= s.avg).length;
+  document.getElementById('st-metrics').innerHTML = [
+    {l:'Invested',v:inr(t.stInv),s:'12 holdings'},{l:'Current value',v:inr(t.stVal),s:'live NSE prices'},
+    {l:'Total P&L',v:inr(stPnl),s:pct(stPct)+' return',c:gcls(stPnl)},
+    {l:'Winners / Losers',v:wins+' / '+(D.stocks.length-wins),s:'of '+D.stocks.length+' stocks',c:wins>D.stocks.length/2?'green':'red'},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
+
+  document.getElementById('nb-st').textContent = D.stocks.length;
+  document.getElementById('st-list').innerHTML = D.stocks.length
+    ? [...D.stocks].sort((a,b)=>((b.ltp||b.avg)-b.avg)/b.avg - ((a.ltp||a.avg)-a.avg)/a.avg).map((s,i) => {
+        const ltp=s.ltp||s.avg, inv=s.qty*s.avg, mv=s.qty*ltp, pl=mv-inv, pp=inv>0?(pl/inv)*100:0;
+        const idx = D.stocks.indexOf(s);
+        return `<div class="item-row">
+          <div class="item-icon" style="background:${pl>=0?'#f0fdf4':'#fef2f2'}">${pl>=0?'↑':'↓'}</div>
+          <div class="item-info"><div class="item-name">${s.sym}</div><div class="item-meta">Qty: ${s.qty} · Avg: ₹${s.avg.toFixed(2)} · LTP: ₹${ltp.toFixed(2)}</div></div>
+          <div class="item-right"><div class="item-val">${inr(mv)}</div><div class="item-sub ${gcls(pl)}">${inr(pl)} (${pct(pp)})</div></div>
+          <button class="del-btn" onclick="del('stocks',${idx})">✕</button>
+        </div>`;
+      }).join('')
+    : '<div class="empty"><div class="e-icon">📈</div>No stocks added yet.<br>Click "Add stock" to get started.</div>';
+}
+
+function renderMF() {
+  const t = totals();
+  const mfPnl = t.mfVal - t.mfInv;
+  const sipCount = D.mf.filter(f=>f.sip>0).length;
+  document.getElementById('mf-metrics').innerHTML = [
+    {l:'Total invested',v:inr(t.mfInv),s:D.mf.length+' funds'},{l:'Current value',v:inr(t.mfVal),s:'NAV as of 15-May-2026'},
+    {l:'Total gain',v:inr(mfPnl),s:t.mfInv>0?pct((mfPnl/t.mfInv)*100)+' return':'—',c:gcls(mfPnl)},
+    {l:'Active SIPs',v:sipCount,s:inr(t.sipMo)+'/month',c:'gold'},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
+
+  document.getElementById('nb-mf').textContent = D.mf.length;
+  const amcColors = {HDFC:'#0ea5e9',Axis:'#8b5cf6',SBI:'#f59e0b'};
+  const amcs = [...new Set(D.mf.map(f=>f.amc))];
+  document.getElementById('mf-groups').innerHTML = amcs.map(amc => {
+    const funds = D.mf.filter(f=>f.amc===amc);
+    const amcInv = funds.reduce((a,f)=>a+f.inv,0);
+    const amcVal = funds.reduce((a,f)=>a+f.val,0);
+    const amcPnl = amcVal-amcInv;
+    const col = amcColors[amc]||'#888';
+    return `<div class="sec-lbl"><span>${amc} Mutual Funds · ${funds.length} funds · ${inr(amcVal)}</span><span class="${gcls(amcPnl)}">${inr(amcPnl)} gain</span></div>`+
+      funds.map((f,i) => {
+        const gain=f.val-f.inv, gp=f.inv>0?(gain/f.inv)*100:0;
+        const idx = D.mf.indexOf(f);
+        return `<div class="item-row">
+          <div class="item-icon" style="background:${col}18;color:${col};font-size:0.75rem;font-weight:700">${amc.slice(0,2)}</div>
+          <div class="item-info">
+            <div class="item-name">${f.name}</div>
+            <div class="item-meta">${f.type}${f.sip>0?' · SIP: ₹'+f.sip+'/mo':''}${f.xirr!=null?' · XIRR: '+f.xirr+'%':''}${f.nav?' · NAV: ₹'+f.nav:''}</div>
+          </div>
+          <div class="item-right"><div class="item-val">${inr(f.val)}</div><div class="item-sub ${gcls(gain)}">${inr(gain)} (${pct(gp)})</div></div>
+          <button class="del-btn" onclick="del('mf',${idx})">✕</button>
+        </div>`;
+      }).join('');
+  }).join('');
+}
+
+function renderBank() {
+  document.getElementById('nb-bank').textContent = D.banks.length + D.fds.length;
+  document.getElementById('bank-list').innerHTML = D.banks.length
+    ? D.banks.map((b,i)=>`<div class="item-row">
+        <div class="item-icon" style="background:#eff6ff">🏦</div>
+        <div class="item-info"><div class="item-name">${b.name}</div><div class="item-meta">${b.type} · ${b.rate}% p.a.</div></div>
+        <div class="item-right"><div class="item-val green">${inr(b.bal)}</div><div class="item-sub">balance</div></div>
+        <button class="del-btn" onclick="del('banks',${i})">✕</button>
+      </div>`).join('')
+    : '<div class="empty"><div class="e-icon">🏦</div>No bank accounts yet.</div>';
+
+  document.getElementById('fd-list').innerHTML = D.fds.length
+    ? D.fds.map((f,i)=>{
+        const gain=(f.matamt||f.prin)-f.prin;
+        return `<div class="item-row">
+          <div class="item-icon" style="background:#fffbeb">🔒</div>
+          <div class="item-info"><div class="item-name">${f.bank} FD</div><div class="item-meta">${f.rate}% p.a. · Matures: ${f.matdate||'—'}</div></div>
+          <div class="item-right"><div class="item-val">${inr(f.prin)}</div><div class="item-sub green">→ ${inr(f.matamt||f.prin)} (+${inr(gain)})</div></div>
+          <button class="del-btn" onclick="del('fds',${i})">✕</button>
+        </div>`;
+      }).join('')
+    : '<div class="empty"><div class="e-icon">🔒</div>No FDs added yet.</div>';
+}
+
+function renderLoans() {
+  const t = totals();
+  document.getElementById('nb-loans').textContent = D.loans.length;
+  document.getElementById('loan-metrics').innerHTML = D.loans.length ? [
+    {l:'Total outstanding',v:inr(t.loanBal),s:D.loans.length+' loans',c:'red'},
+    {l:'Monthly EMI',v:inr(t.emiMo),s:'committed outflow',c:'red'},
+    {l:'Annual EMI',v:inr(t.emiMo*12),s:'per year',c:'red'},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('') : '';
+  document.getElementById('loan-list').innerHTML = D.loans.length
+    ? D.loans.map((l,i)=>{
+        const totalPay = l.emi*l.rem, interest = Math.max(0,totalPay-l.bal);
+        return `<div class="item-row">
+          <div class="item-icon" style="background:#fef2f2">📋</div>
+          <div class="item-info"><div class="item-name">${l.type} — ${l.bank}</div><div class="item-meta">${l.rate}% · EMI: ${inr(l.emi)}/mo · ${l.rem} months left · Interest: ${inr(interest)}</div></div>
+          <div class="item-right"><div class="item-val red">${inr(l.bal)}</div><div class="item-sub">outstanding</div></div>
+          <button class="del-btn" onclick="del('loans',${i})">✕</button>
+        </div>`;
+      }).join('')
+    : '<div class="empty"><div class="e-icon">🎉</div>No loans — debt free!</div>';
+}
+
+function renderCards() {
+  const t = totals();
+  document.getElementById('nb-cards').textContent = D.cards.length;
+  document.getElementById('cc-metrics').innerHTML = D.cards.length ? [
+    {l:'Total outstanding',v:inr(t.ccDue),s:'pay in full to avoid interest',c:'red'},
+    {l:'Total credit limit',v:inr(D.cards.reduce((a,c)=>a+c.limit,0)),s:'available credit'},
+    {l:'Avg utilisation',v:Math.round(D.cards.reduce((a,c)=>a+(c.limit>0?c.due/c.limit:0),0)/Math.max(D.cards.length,1)*100)+'%',s:'keep below 30%',c:'red'},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('') : '';
+  document.getElementById('cc-list').innerHTML = D.cards.length
+    ? D.cards.map((c,i)=>{
+        const util = c.limit>0?(c.due/c.limit)*100:0;
+        const uColor = util>75?'#ef4444':util>40?'#f59e0b':'#22c55e';
+        return `<div class="item-row">
+          <div class="item-icon" style="background:#f5f3ff">💳</div>
+          <div class="item-info">
+            <div class="item-name">${c.name}</div>
+            <div class="item-meta">Limit: ${inr(c.limit)} · Rate: ${c.rate}% p.a. · Due: ${c.duedate||'—'} · Min: ${inr(c.min||0)}</div>
+            <div class="util-bar"><div class="util-fill" style="width:${Math.min(100,util).toFixed(0)}%;background:${uColor}"></div></div>
+          </div>
+          <div class="item-right"><div class="item-val red">${inr(c.due)}</div><div class="item-sub" style="color:${uColor}">${util.toFixed(0)}% used</div></div>
+          <button class="del-btn" onclick="del('cards',${i})">✕</button>
+        </div>`;
+      }).join('')
+    : '<div class="empty"><div class="e-icon">💳</div>No credit cards added.</div>';
+}
+
+function renderSIPs() {
+  const sipMo = D.mf.reduce((a,f)=>a+(f.sip||0),0);
+  const activeSIPs = D.mf.filter(f=>f.sip>0);
+  document.getElementById('nb-sip').textContent = activeSIPs.length;
+  document.getElementById('sip-metrics').innerHTML = [
+    {l:'Monthly outflow',v:inr(sipMo),s:'total SIP commitment',c:'gold'},
+    {l:'Annual outflow',v:inr(sipMo*12),s:'per year committed'},
+    {l:'Active SIPs',v:activeSIPs.length,s:'across 3 AMCs'},
+    {l:'At 10% step-up',v:inr(sipMo*1.1),s:'next year SIP estimate'},
+  ].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
+
+  const sipData = [
+    {amc:'HDFC', sips:[
+      {fund:'HDFC NIFTY Next50 Index Fund',amt:5000,next:'07-Sep-2026',till:'07-Sep-2026',note:'⚠️ Ends in 4 months!'},
+      {fund:'HDFC Large Cap Fund',amt:2000,next:'11-Nov-2025',till:'11-Nov-2099'},
+      {fund:'HDFC Large & Mid Cap Fund',amt:1000,next:'11-Nov-2025',till:'11-Nov-2099'},
+      {fund:'HDFC Mid Cap Fund',amt:1000,next:'11-Nov-2025',till:'11-Nov-2099'},
+      {fund:'HDFC Small Cap Fund',amt:1000,next:'11-Nov-2025',till:'11-Nov-2099'},
+    ]},
+    {amc:'SBI', sips:[
+      {fund:'SBI Nifty200 Momentum 30',amt:5000,next:'22-May-2026',till:'22-Jun-2045'},
+      {fund:'SBI Gold Fund',amt:5000,next:'27-May-2026',till:'27-Sep-2045',note:'Top-up added'},
+      {fund:'SBI Multicap Direct',amt:5000,next:'05-Jun-2026',till:'05-May-2032'},
+      {fund:'SBI Silver ETF FoF',amt:2500,next:'10-Jun-2026',till:'10-Jan-2046',note:'Top-up added'},
+      {fund:'SBI Innovative Opportunities',amt:2500,next:'10-Jun-2026',till:'10-Dec-2099'},
+    ]}
+  ];
+
+  ['hdfc','sbi'].forEach((amc,ai) => {
+    document.getElementById(amc+'-sip-list').innerHTML = sipData[ai].sips.map(s => `
+      <div class="item-row">
+        <div class="item-icon" style="background:${amc==='hdfc'?'#eff6ff':'#fffbeb'}">${amc==='hdfc'?'💙':'💛'}</div>
+        <div class="item-info">
+          <div class="item-name">${s.fund}${s.note?` <span class="badge" style="background:#fef3c7;color:#92400e">${s.note}</span>`:''}</div>
+          <div class="item-meta">Next: ${s.next} · Till: ${s.till}</div>
+        </div>
+        <div class="item-right"><div class="item-val green">${inr(s.amt)}</div><div class="item-sub">per month</div></div>
+      </div>`).join('');
+  });
+}
+
+function renderInsights() {
+  const t = totals();
+  const insights = [];
+  insights.push({type:'bad',title:'⚠️ HDFC NIFTY Next50 SIP ends September 2026',desc:'Your ₹5,000/month SIP ends in just 4 months. Log in to HDFC MF portal now and renew it. Missing this means losing compounding momentum.'});
+  const contra = D.mf.find(f=>f.name.includes('Contra'));
+  const mom = D.mf.find(f=>f.name.includes('Momentum'));
+  if(contra||mom) insights.push({type:'bad',title:'Exit SBI underperformers — negative XIRR',desc:`SBI Contra (−0.99% XIRR) and SBI Nifty200 Momentum (−3.63% XIRR) are losing money. Combined ₹1L invested. Exit and redeploy to SBI Multicap Direct or SBI Gold Fund.`});
+  if(t.ccDue>0) insights.push({type:'bad',title:'Credit card outstanding — pay immediately',desc:`₹${Math.round(t.ccDue).toLocaleString('en-IN')} outstanding on credit cards. At 36%+ interest, this erases investment gains. Pay in full before due date.`});
+  if(t.bankBal < t.emiMo*6) insights.push({type:'warn',title:'Emergency fund too low',desc:`Your bank balance should cover 6 months of expenses. Build ₹2–3L emergency buffer in a liquid fund like Axis Ultra Short Duration.`});
+  const eqVal = D.mf.filter(f=>f.type==='Equity'||f.type==='Index').reduce((a,f)=>a+f.val,0)+t.stVal;
+  const eqPct = t.assets>0?(eqVal/t.assets)*100:0;
+  if(eqPct>80) insights.push({type:'warn',title:`Equity overweight at ${eqPct.toFixed(0)}% — ideal is ~61% at age 39`,desc:`100-minus-age rule suggests 61% equity. You're at ${eqPct.toFixed(0)}%. Add ₹5K/month to debt/liquid funds to rebalance gradually.`});
+  insights.push({type:'warn',title:'18 mutual funds is too many — consolidate to 10–12',desc:'Over-diversification adds complexity without meaningful risk reduction. Target: 2 index, 2 active equity, 1 gold, 1 silver, 1 liquid. Exit 6 underperformers over 2 years.'});
+  insights.push({type:'warn',title:'SBI Multicap: Regular vs Direct — switch after 1 year',desc:'You hold SBI Multicap in Regular Plan (higher expense ratio) and Direct Plan. Switch Regular → Direct after 1 year to avoid exit load. Saves ~1% annually on ₹1.4L.'});
+  if(t.sipMo>0) insights.push({type:'good',title:'Great SIP discipline — enable 10% annual step-up',desc:`₹${Math.round(t.sipMo).toLocaleString('en-IN')}/month in SIPs is excellent. A 10% annual step-up adds ~₹2.6 Cr extra by retirement at 60. Activate step-up on all SIPs.`});
+  insights.push({type:'good',title:'THERMAX, SUNPHARMA, VBL — long-term compounders, hold',desc:'THERMAX (+20.17%), VBL (+16.6%), SUNPHARMA (+9.06%) are quality businesses with long runways. Hold all three through market cycles.'});
+  insights.push({type:'good',title:'SBI Gold Fund (51.16% XIRR) and Axis Silver FoF (104.7%) — exceptional',desc:'Your best performers. Top-up added on SBI Gold. Keep both as inflation hedges. No action needed — these are working perfectly.'});
+
+  document.getElementById('insights-list').innerHTML = insights.map(i=>`<div class="insight ${i.type}"><div class="it">${i.title}</div><div class="id">${i.desc}</div></div>`).join('');
+
+  const scores = [
+    {l:'Overall portfolio health',v:67,c:'#f59e0b'},{l:'SIP discipline',v:90,c:'#22c55e'},
+    {l:'Emergency fund',v:20,c:'#ef4444'},{l:'Debt allocation',v:25,c:'#ef4444'},
+    {l:'Fund diversification',v:55,c:'#f59e0b'},{l:'Retirement readiness',v:74,c:'#22c55e'},
+    {l:'Return quality',v:72,c:'#22c55e'},{l:'Risk balance',v:50,c:'#f59e0b'},
+  ];
+  document.getElementById('health-scores').innerHTML = scores.map(s=>`
+    <div class="progress-row">
+      <div class="pl">${s.l}</div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${s.v}%;background:${s.c}"></div></div>
+      <div class="pv" style="color:${s.c}">${s.v}</div>
+    </div>`).join('');
+}
+
+function renderReport() {
+  const t = totals();
+  const totalInv = t.stInv + t.mfInv;
+  const totalVal = t.stVal + t.mfVal;
+  const gain = totalVal - totalInv;
+  const gainPct = totalInv>0?(gain/totalInv)*100:0;
+
+  document.getElementById('report-content').innerHTML = `
+    <div style="background:white;border:1px solid var(--paper-mid);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem">
+      <div style="font-family:var(--serif);font-size:1.3rem;margin-bottom:.3rem">WealthWise — Financial Statement</div>
+      <div style="font-size:0.78rem;color:var(--ink-muted)">Praveen M S · Age 39 · As of 18 May 2026</div>
+    </div>
+    <div class="metric-grid" style="margin-bottom:1.25rem">
+      ${[{l:'Net worth',v:inr(t.netWorth),c:gcls(t.netWorth)},{l:'Total assets',v:inr(t.assets)},{l:'Total liabilities',v:inr(t.liab),c:'red'},{l:'Investment gain',v:inr(gain)+' ('+pct(gainPct)+')',c:gcls(gain)},{l:'Monthly SIP',v:inr(t.sipMo),c:'gold'},{l:'Monthly EMI',v:inr(t.emiMo),c:t.emiMo>0?'red':''}].map(m=>`<div class="mcard"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div></div>`).join('')}
+    </div>
+    <div style="overflow-x:auto;background:white;border:1px solid var(--paper-mid);border-radius:var(--radius-lg);padding:1.1rem">
+      <table class="rtbl">
+        <thead><tr><th>Category</th><th>Count</th><th>Invested</th><th>Current value</th><th>Gain / Loss</th><th>Return %</th></tr></thead>
+        <tbody>
+          <tr><td>Direct stocks (NSE)</td><td>${D.stocks.length}</td><td>${inr(t.stInv)}</td><td>${inr(t.stVal)}</td><td class="${gcls(t.stVal-t.stInv)}">${inr(t.stVal-t.stInv)}</td><td class="${gcls(t.stVal-t.stInv)}">${t.stInv>0?pct((t.stVal-t.stInv)/t.stInv*100):'—'}</td></tr>
+          ${['HDFC','Axis','SBI'].map(amc=>{const fi=D.mf.filter(f=>f.amc===amc);const ai=fi.reduce((a,f)=>a+f.inv,0),av=fi.reduce((a,f)=>a+f.val,0);return`<tr><td>${amc} Mutual Funds</td><td>${fi.length}</td><td>${inr(ai)}</td><td>${inr(av)}</td><td class="${gcls(av-ai)}">${inr(av-ai)}</td><td class="${gcls(av-ai)}">${ai>0?pct((av-ai)/ai*100):'—'}</td></tr>`;}).join('')}
+          <tr><td>Bank accounts</td><td>${D.banks.length}</td><td>—</td><td class="green">${inr(t.bankBal)}</td><td>—</td><td>—</td></tr>
+          <tr><td>Fixed deposits</td><td>${D.fds.length}</td><td>${inr(t.fdInv)}</td><td class="green">${inr(t.fdVal)}</td><td class="green">${inr(t.fdVal-t.fdInv)}</td><td>—</td></tr>
+          <tr style="color:var(--danger)"><td>Loans (liability)</td><td>${D.loans.length}</td><td>—</td><td class="red">−${inr(t.loanBal)}</td><td class="red">EMI: ${inr(t.emiMo)}/mo</td><td>—</td></tr>
+          <tr style="color:var(--danger)"><td>Credit cards (liability)</td><td>${D.cards.length}</td><td>—</td><td class="red">−${inr(t.ccDue)}</td><td>—</td><td>—</td></tr>
+          <tr><td>NET WORTH</td><td>${D.stocks.length+D.mf.length+D.banks.length+D.fds.length+D.loans.length+D.cards.length} items</td><td>${inr(totalInv)}</td><td class="${gcls(t.assets)}">${inr(t.assets)}</td><td class="${gcls(t.netWorth)}">${inr(t.netWorth)}</td><td class="${gcls(gainPct)}">${pct(gainPct)}</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderAll() {
+  renderDashboard();
+  renderStocks();
+  renderMF();
+  renderBank();
+  renderLoans();
+  renderCards();
+  renderSIPs();
+  renderInsights();
+}
+
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const map = {dashboard:0,report:1,stocks:2,mf:3,bank:4,loans:5,cards:6,sip:7,insights:8};
+  document.querySelectorAll('.nav-item')[map[page]||0].classList.add('active');
+  if(page==='report') renderReport();
+}
+
+function openModal(id) { document.getElementById('modal-'+id).classList.add('open'); }
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+function gv(id){ return document.getElementById(id).value.trim(); }
+function gn(id){ return parseFloat(document.getElementById(id).value)||0; }
+function clr(...ids){ ids.forEach(id=>document.getElementById(id).value=''); }
+
+function saveStock() {
+  const sym = gv('s-sym').toUpperCase(); if(!sym) return;
+  const ltp = gn('s-ltp');
+  D.stocks.push({sym, qty:gn('s-qty'), avg:gn('s-avg'), ltp:ltp||null});
+  clr('s-sym','s-qty','s-avg','s-ltp'); closeModal('stock'); saveData(); renderAll();
+}
+function saveMF() {
+  const name=gv('mf-name'); if(!name) return;
+  D.mf.push({name,amc:gv('mf-amc'),type:gv('mf-type'),inv:gn('mf-inv'),val:gn('mf-val')||gn('mf-inv'),xirr:gn('mf-xirr')||null,sip:gn('mf-sip'),units:gn('mf-units')||null,nav:gn('mf-nav')||null});
+  clr('mf-name','mf-inv','mf-val','mf-units','mf-nav','mf-xirr','mf-sip'); closeModal('mf'); saveData(); renderAll();
+}
+function saveBank() {
+  const name=gv('b-name'); if(!name) return;
+  D.banks.push({name,type:gv('b-type'),bal:gn('b-bal'),rate:gn('b-rate')});
+  clr('b-name','b-bal','b-rate'); closeModal('bank'); saveData(); renderAll();
+}
+function saveFD() {
+  const bank=gv('fd-bank'); if(!bank) return;
+  D.fds.push({bank,prin:gn('fd-prin'),rate:gn('fd-rate'),start:gv('fd-start'),matdate:gv('fd-mat'),matamt:gn('fd-matamt')||gn('fd-prin')});
+  clr('fd-bank','fd-prin','fd-rate','fd-start','fd-mat','fd-matamt'); closeModal('fd'); saveData(); renderAll();
+}
+function saveLoan() {
+  const bank=gv('l-bank'); if(!bank) return;
+  D.loans.push({type:gv('l-type'),bank,bal:gn('l-bal'),rate:gn('l-rate'),emi:gn('l-emi'),rem:gn('l-rem')});
+  clr('l-bank','l-bal','l-rate','l-emi','l-rem'); closeModal('loan'); saveData(); renderAll();
+}
+function saveCC() {
+  const name=gv('cc-name'); if(!name) return;
+  D.cards.push({name,limit:gn('cc-limit'),due:gn('cc-due'),min:gn('cc-min'),duedate:gv('cc-duedate'),rate:gn('cc-rate')});
+  clr('cc-name','cc-limit','cc-due','cc-min','cc-duedate','cc-rate'); closeModal('cc'); saveData(); renderAll();
+}
+function del(cat,i) { if(confirm('Remove this item?')){ D[cat].splice(i,1); saveData(); renderAll(); } }
+
+async function refreshStocks() {
+  const btn = document.querySelector('.topbar-refresh');
+  btn.textContent = '⟳ Fetching…';
+  const PROXY = 'https://api.allorigins.win/get?url=';
+  const YF = s => `https://query1.finance.yahoo.com/v8/finance/chart/${s}.NS?interval=1d&range=1d`;
+  let done = 0;
+  await Promise.all(D.stocks.map(async(s,i) => {
+    try {
+      const r = await fetch(`${PROXY}${encodeURIComponent(YF(s.sym))}`);
+      const j = await r.json();
+      const meta = JSON.parse(j.contents).chart.result[0].meta;
+      D.stocks[i].ltp = meta.regularMarketPrice;
+      done++;
+      btn.textContent = `⟳ ${done}/${D.stocks.length} loaded`;
+    } catch(e) {}
+  }));
+  saveData(); renderAll();
+  btn.textContent = '⟳ Refresh prices';
+}
+
+loadData();
+</script>
+</body>
+</html>

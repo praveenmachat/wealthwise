@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthWise — Your Complete Financial Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f0f0f;
+  --ink-soft: #4a4a4a;
+  --ink-muted: #8a8a8a;
+  --paper: #faf9f6;
+  --paper-warm: #f2f0eb;
+  --paper-mid: #e8e5de;
+  --accent: #1a472a;
+  --accent-light: #2d6a4f;
+  --accent-gold: #c8a84b;
+  --accent-gold-light: #e8c96d;
+  --danger: #c0392b;
+  --serif: 'DM Serif Display', serif;
+  --sans: 'DM Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  overflow-x: hidden;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 3rem;
+  background: rgba(250,249,246,0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--paper-mid);
+}
+.nav-logo { font-family: var(--serif); font-size: 1.5rem; color: var(--ink); letter-spacing: -0.02em; }
+.nav-logo span { color: var(--accent); }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a { font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--ink); }
+.nav-cta { font-size: 0.875rem; font-weight: 600; padding: 0.6rem 1.5rem; background: var(--accent); color: white; text-decoration: none; border-radius: 2px; transition: background 0.2s; }
+.nav-cta:hover { background: var(--accent-light); }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 8rem 3rem 5rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--paper) 60%, var(--paper-warm) 100%);
+  z-index: 0;
+}
+.hero-grid-lines {
+  position: absolute; inset: 0; z-index: 0; opacity: 0.3;
+  background-image: linear-gradient(var(--paper-mid) 1px, transparent 1px), linear-gradient(90deg, var(--paper-mid) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.hero-content { position: relative; z-index: 1; max-width: 680px; }
+.hero-tag {
+  display: inline-block;
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid var(--accent);
+  padding: 0.35rem 0.9rem; border-radius: 1px; margin-bottom: 2rem;
+  animation: fadeUp 0.6s ease both;
+}
+.hero h1 {
+  font-family: var(--serif); font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1.05; letter-spacing: -0.02em; color: var(--ink);
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero h1 em { color: var(--accent); font-style: italic; }
+.hero p {
+  font-size: 1.125rem; color: var(--ink-soft); line-height: 1.7;
+  max-width: 520px; margin-bottom: 2.5rem;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-actions {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.btn-primary {
+  padding: 0.9rem 2rem; background: var(--accent); color: white;
+  font-size: 0.9rem; font-weight: 600; text-decoration: none;
+  border-radius: 2px; transition: background 0.2s, transform 0.1s;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+.btn-secondary {
+  padding: 0.9rem 2rem; background: transparent; color: var(--ink);
+  font-size: 0.9rem; font-weight: 500; text-decoration: none;
+  border: 1.5px solid var(--paper-mid); border-radius: 2px;
+  transition: border-color 0.2s;
+}
+.btn-secondary:hover { border-color: var(--ink-soft); }
+
+.hero-visual {
+  position: absolute; right: 3rem; top: 50%; transform: translateY(-50%);
+  z-index: 1; width: 420px;
+  animation: fadeUp 0.8s 0.2s ease both;
+}
+.dashboard-preview {
+  background: var(--ink); border-radius: 12px; padding: 1.5rem;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.18);
+}
+.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+.dash-title { font-size: 0.75rem; color: rgba(255,255,255,0.5); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.dash-date { font-size: 0.7rem; color: rgba(255,255,255,0.3); }
+.dash-networth { font-family: var(--serif); font-size: 2.2rem; color: white; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
+.dash-gain { font-size: 0.8rem; color: #4ade80; font-weight: 500; }
+.dash-bars { display: flex; gap: 3px; height: 8px; border-radius: 4px; overflow: hidden; margin: 1.2rem 0; }
+.dash-bar { height: 100%; border-radius: 2px; }
+.dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+.dash-card { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.75rem; }
+.dash-card-lbl { font-size: 0.65rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.dash-card-val { font-size: 1rem; font-weight: 600; color: white; }
+.dash-card-val.green { color: #4ade80; }
+.dash-card-val.red { color: #f87171; }
+.dash-items { display: flex; flex-direction: column; gap: 6px; }
+.dash-item { display: flex; align-items: center; gap: 8px; }
+.dash-item-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dash-item-name { font-size: 0.72rem; color: rgba(255,255,255,0.6); flex: 1; }
+.dash-item-val { font-size: 0.72rem; color: rgba(255,255,255,0.9); font-weight: 500; }
+.dash-item-chg { font-size: 0.65rem; font-weight: 500; }
+
+/* STATS STRIP */
+.stats-strip {
+  background: var(--accent); color: white;
+  display: flex; flex-wrap: wrap;
+  padding: 2.5rem 3rem; gap: 0;
+}
+.stat-item { flex: 1; min-width: 160px; padding: 0 2rem; border-right: 1px solid rgba(255,255,255,0.15); }
+.stat-item:last-child { border-right: none; }
+.stat-num { font-family: var(--serif); font-size: 2.5rem; line-height: 1; margin-bottom: 0.3rem; }
+.stat-lbl { font-size: 0.8rem; color: rgba(255,255,255,0.7); font-weight: 400; }
+
+/* FEATURES */
+.features { padding: 7rem 3rem; background: white; }
+.section-tag {
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent-gold); margin-bottom: 1rem;
+}
+.section-title {
+  font-family: var(--serif); font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15; letter-spacing: -0.02em; max-width: 560px; margin-bottom: 1rem;
+}
+.section-sub { font-size: 1rem; color: var(--ink-soft); max-width: 480px; margin-bottom: 4rem; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2px; }
+.feature-card {
+  padding: 2.5rem; background: var(--paper-warm);
+  transition: background 0.2s;
+}
+.feature-card:hover { background: var(--paper-mid); }
+.feature-icon {
+  width: 48px; height: 48px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 1.2rem;
+}
+.feature-card h3 { font-family: var(--serif); font-size: 1.3rem; margin-bottom: 0.6rem; line-height: 1.2; }
+.feature-card p { font-size: 0.875rem; color: var(--ink-soft); line-height: 1.65; }
+
+/* HOW IT WORKS */
+.how { padding: 7rem 3rem; background: var(--paper); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-top: 4rem; }
+.step { position: relative; }
+.step-num {
+  font-family: var(--serif); font-size: 5rem; color: var(--paper-mid);
+  line-height: 1; position: absolute; top: -1.5rem; left: -0.5rem;
+  font-style: italic; user-select: none;
+}
+.step-content { position: relative; z-index: 1; padding-top: 2rem; }
+.step h3 { font-family: var(--serif); font-size: 1.25rem; margin-bottom: 0.6rem; }
+.step p { font-size: 0.875rem; color: var(--ink-soft); line-height: 1.65; }
+
+/* CATEGORIES */
+.categories { padding: 7rem 3rem; background: var(--ink); color: white; }
+.categories .section-title { color: white; }
+.categories .section-sub { color: rgba(255,255,255,0.6); }
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 3rem; }
+.cat-card {
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;
+  padding: 1.5rem 1.25rem; transition: border-color 0.2s, background 0.2s;
+  cursor: default;
+}
+.cat-card:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.04); }
+.cat-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+.cat-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem; }
+.cat-desc { font-size: 0.78rem; color: rgba(255,255,255,0.5); line-height: 1.5; }
+
+/* TESTIMONIAL */
+.testimonial { padding: 7rem 3rem; background: var(--paper-warm); }
+.quote-wrap { max-width: 700px; margin: 0 auto; text-align: center; }
+.quote-mark { font-family: var(--serif); font-size: 5rem; color: var(--accent); line-height: 0.5; margin-bottom: 1.5rem; }
+.quote-text { font-family: var(--serif); font-size: clamp(1.3rem, 2.5vw, 1.75rem); line-height: 1.5; color: var(--ink); font-style: italic; margin-bottom: 1.5rem; }
+.quote-author { font-size: 0.875rem; color: var(--ink-muted); font-weight: 500; }
+
+/* CTA SECTION */
+.cta-section {
+  padding: 7rem 3rem; background: var(--accent);
+  text-align: center; color: white;
+}
+.cta-section h2 { font-family: var(--serif); font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 1rem; }
+.cta-section p { font-size: 1rem; color: rgba(255,255,255,0.75); margin-bottom: 2.5rem; max-width: 480px; margin-left: auto; margin-right: auto; }
+.btn-white { padding: 0.9rem 2.5rem; background: white; color: var(--accent); font-size: 0.9rem; font-weight: 700; text-decoration: none; border-radius: 2px; transition: opacity 0.2s; }
+.btn-white:hover { opacity: 0.9; }
+
+/* FOOTER */
+footer {
+  background: #080808; color: rgba(255,255,255,0.5);
+  padding: 3rem; display: flex; flex-wrap: wrap;
+  gap: 1rem; justify-content: space-between; align-items: center;
+}
+.footer-logo { font-family: var(--serif); font-size: 1.2rem; color: rgba(255,255,255,0.8); }
+.footer-logo span { color: var(--accent-gold); }
+.footer-copy { font-size: 0.78rem; }
+.footer-links { display: flex; gap: 1.5rem; }
+.footer-links a { font-size: 0.78rem; color: rgba(255,255,255,0.4); text-decoration: none; }
+.footer-links a:hover { color: rgba(255,255,255,0.8); }
+
+/* ANIMATIONS */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+
+/* RESPONSIVE */
+@media(max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  .hero { padding: 7rem 1.5rem 4rem; }
+  .hero-visual { display: none; }
+  .stats-strip { padding: 2rem 1.5rem; }
+  .stat-item { padding: 0 1rem; min-width: 130px; }
+  .features, .how, .categories, .testimonial, .cta-section { padding: 4rem 1.5rem; }
+  footer { padding: 2rem 1.5rem; }
+}
+
+/* ticker */
+.ticker-wrap { background: var(--accent-gold); overflow: hidden; padding: 0.5rem 0; }
+.ticker { display: flex; animation: ticker 30s linear infinite; white-space: nowrap; }
+.ticker-item { padding: 0 2rem; font-size: 0.78rem; font-weight: 600; color: var(--ink); letter-spacing: 0.04em; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ticker-item">📈 THERMAX +20.17%</span>
+    <span class="ticker-item">💰 VBL +16.60%</span>
+    <span class="ticker-item">☀️ SUNPHARMA +9.06%</span>
+    <span class="ticker-item">🏦 HDFC NIFTY Next50 +33.21%</span>
+    <span class="ticker-item">🥇 SBI Gold Fund XIRR 51.16%</span>
+    <span class="ticker-item">🪙 Axis Silver FoF XIRR 104.7%</span>
+    <span class="ticker-item">📊 Axis NIFTY500 Value 50 +10.9%</span>
+    <span class="ticker-item">📈 THERMAX +20.17%</span>
+    <span class="ticker-item">💰 VBL +16.60%</span>
+    <span class="ticker-item">☀️ SUNPHARMA +9.06%</span>
+    <span class="ticker-item">🏦 HDFC NIFTY Next50 +33.21%</span>
+    <span class="ticker-item">🥇 SBI Gold Fund XIRR 51.16%</span>
+    <span class="ticker-item">🪙 Axis Silver FoF XIRR 104.7%</span>
+    <span class="ticker-item">📊 Axis NIFTY500 Value 50 +10.9%</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Wealth<span>Wise</span></div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#categories">What we track</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Get started free →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid-lines"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Personal Finance Dashboard</div>
+    <h1>Know exactly where your <em>money stands</em></h1>
+    <p>WealthWise brings together your stocks, mutual funds, bank accounts, fixed deposits, loans and credit cards into one clean dashboard. Built for Indian investors.</p>
+    <div class="hero-actions">
+      <a href="#cta" class="btn-primary">Launch the app →</a>
+      <a href="#features" class="btn-secondary">See features</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="dashboard-preview">
+      <div class="dash-header">
+        <span class="dash-title">Net worth</span>
+        <span class="dash-date">May 2026</span>
+      </div>
+      <div class="dash-networth">₹28.4L</div>
+      <div class="dash-gain">↑ ₹3.8L gain this year · +15.4%</div>
+      <div class="dash-bars">
+        <div class="dash-bar" style="width:22%;background:#7c3aed"></div>
+        <div class="dash-bar" style="width:38%;background:#22c55e"></div>
+        <div class="dash-bar" style="width:23%;background:#f59e0b"></div>
+        <div class="dash-bar" style="width:17%;background:#ef4444;opacity:0.6"></div>
+      </div>
+      <div class="dash-cards">
+        <div class="dash-card"><div class="dash-card-lbl">Investments</div><div class="dash-card-val green">₹20.5L</div></div>
+        <div class="dash-card"><div class="dash-card-lbl">Bank + FD</div><div class="dash-card-val">₹5.2L</div></div>
+        <div class="dash-card"><div class="dash-card-lbl">Loans</div><div class="dash-card-val red">₹2.8L</div></div>
+        <div class="dash-card"><div class="dash-card-lbl">Monthly SIP</div><div class="dash-card-val green">₹30K</div></div>
+      </div>
+      <div class="dash-items">
+        <div class="dash-item"><div class="dash-item-dot" style="background:#7c3aed"></div><span class="dash-item-name">Direct Stocks (12)</span><span class="dash-item-val">₹4.6L</span><span class="dash-item-chg" style="color:#4ade80">+2.1%</span></div>
+        <div class="dash-item"><div class="dash-item-dot" style="background:#22c55e"></div><span class="dash-item-name">Mutual Funds (18)</span><span class="dash-item-val">₹16.6L</span><span class="dash-item-chg" style="color:#4ade80">+26.7%</span></div>
+        <div class="dash-item"><div class="dash-item-dot" style="background:#f59e0b"></div><span class="dash-item-name">Bank + FD</span><span class="dash-item-val">₹5.2L</span><span class="dash-item-chg" style="color:#94a3b8">stable</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<div class="stats-strip">
+  <div class="stat-item reveal">
+    <div class="stat-num">18+</div>
+    <div class="stat-lbl">Asset categories tracked</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">₹0</div>
+    <div class="stat-lbl">Cost — completely free</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">100%</div>
+    <div class="stat-lbl">Private — your data, your device</div>
+  </div>
+  <div class="stat-item reveal">
+    <div class="stat-num">Live</div>
+    <div class="stat-lbl">NSE stock prices via Yahoo Finance</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="section-tag">Why WealthWise</div>
+  <h2 class="section-title">Everything you need to understand your finances</h2>
+  <p class="section-sub">Stop logging into 5 different apps. One dashboard. Complete picture.</p>
+  <div class="features-grid reveal">
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#eef2ff">📈</div>
+      <h3>Live stock tracker</h3>
+      <p>Real-time NSE prices for all your direct stock holdings. See P&L, day change, invested vs market value — all in one table.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#f0fdf4">📊</div>
+      <h3>Mutual fund portfolio</h3>
+      <p>Track all your HDFC, Axis, SBI and other AMC funds. Enter XIRR, NAV, units and SIP amounts for a complete picture.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#fffbeb">🏦</div>
+      <h3>Bank accounts & FDs</h3>
+      <p>Add savings accounts, current accounts and fixed deposits. Know your liquid wealth and FD maturity amounts at a glance.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#fef2f2">📋</div>
+      <h3>Loan manager</h3>
+      <p>Track home loans, car loans and personal loans. See outstanding balance, EMI, interest rate and months remaining.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#fdf4ff">💳</div>
+      <h3>Credit card tracker</h3>
+      <p>Monitor outstanding dues, credit limits and utilisation. Get alerts when you're over 40% utilisation — the credit score danger zone.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#f0fdf4">🧠</div>
+      <h3>Smart insights</h3>
+      <p>AI-powered recommendations based on your actual portfolio. Emergency fund gaps, fund overlaps, SIP step-up opportunities and more.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-tag">Getting started</div>
+  <h2 class="section-title">Three steps to financial clarity</h2>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-content">
+        <h3>Add your assets</h3>
+        <p>Enter your stocks, mutual funds, bank balances and FDs. Takes under 10 minutes for a complete portfolio.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-content">
+        <h3>Add your liabilities</h3>
+        <p>Enter any loans and credit card dues. WealthWise calculates your true net worth — assets minus liabilities.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-content">
+        <h3>Get your report</h3>
+        <p>See your complete financial status report with allocation charts, insights, monthly cash flow and net worth breakdown.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="categories" id="categories">
+  <div class="section-tag" style="color:var(--accent-gold)">What we track</div>
+  <h2 class="section-title" style="color:white">Every rupee accounted for</h2>
+  <p class="section-sub">From your savings account to your stock portfolio — WealthWise tracks it all.</p>
+  <div class="cat-grid reveal">
+    <div class="cat-card">
+      <div class="cat-icon">📈</div>
+      <div class="cat-name">Direct stocks</div>
+      <div class="cat-desc">NSE/BSE listed shares with live prices</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">📊</div>
+      <div class="cat-name">Mutual funds</div>
+      <div class="cat-desc">All AMCs — equity, debt, gold, index</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">💰</div>
+      <div class="cat-name">SIPs</div>
+      <div class="cat-desc">Track active SIPs and monthly outflow</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">🏦</div>
+      <div class="cat-name">Bank accounts</div>
+      <div class="cat-desc">Savings, current and salary accounts</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">🔒</div>
+      <div class="cat-name">Fixed deposits</div>
+      <div class="cat-desc">FDs with maturity amount and date</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">🏠</div>
+      <div class="cat-name">Home loan</div>
+      <div class="cat-desc">Outstanding balance and EMI tracking</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">🚗</div>
+      <div class="cat-name">Car & other loans</div>
+      <div class="cat-desc">All loans with interest and tenure</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">💳</div>
+      <div class="cat-name">Credit cards</div>
+      <div class="cat-desc">Dues, limits and utilisation alerts</div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-icon">🥇</div>
+      <div class="cat-name">Gold & Silver</div>
+      <div class="cat-desc">Precious metal funds and ETFs</div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section class="testimonial">
+  <div class="quote-wrap reveal">
+    <div class="quote-mark">"</div>
+    <p class="quote-text">Finally, one place to see my stocks, SIPs, FDs and loans together. I always knew I had money spread across accounts — now I actually know my net worth to the rupee.</p>
+    <div class="quote-author">Praveen M S · Investor · Dubai</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <h2>Start tracking your wealth today</h2>
+  <p>Free forever. No signup required. Your data stays on your device. Built for Indian investors.</p>
+  <a href="app.html" class="btn-white">Open WealthWise App →</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Wealth<span>Wise</span></div>
+  <div class="footer-copy">© 2026 WealthWise · Built for Indian investors · Free forever</div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="app.html">App</a>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
