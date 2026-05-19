@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="auth.js"></script>
 <style>
 :root {
   --ink: #0f0f0f;
@@ -217,8 +218,9 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); fo
     <div class="topbar-logo">Wealth<span>Wise</span></div>
   </div>
   <div class="topbar-right">
-    <span class="topbar-user">Praveen M S · Age 39 · Dubai</span>
+    <span class="topbar-user" id="topbar-user">—</span>
     <button class="topbar-refresh" onclick="refreshStocks()">⟳ Refresh prices</button>
+    <button class="topbar-refresh" onclick="WW.logout()" style="background:rgba(220,38,38,0.3)">⎋ Logout</button>
   </div>
 </div>
 
@@ -487,7 +489,7 @@ body { font-family: var(--sans); background: var(--paper); color: var(--ink); fo
 </div>
 
 <script>
-const STORE_KEY = 'wealthwise_v2';
+let CURRENT_USER = null;
 let D = { stocks:[], mf:[], banks:[], fds:[], loans:[], cards:[] };
 let donutChart = null, pnlChart = null;
 
@@ -524,25 +526,36 @@ function defaultData() {
 }
 
 function loadData() {
+  // Auth check
+  if (!WW.isLoggedIn()) { window.location.href = 'login.html'; return; }
+  CURRENT_USER = WW.getSession();
+  document.getElementById('topbar-user').textContent = CURRENT_USER.name + ' · Dubai';
+
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = WW.getUserData(CURRENT_USER.id);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      D = parsed;
-      if (!D.stocks || D.stocks.length === 0) { defaultData(); saveData(); }
+      D = raw;
+      if (!D.stocks || D.stocks.length === 0) {
+        // Only seed default data for first/admin user
+        const users = WW.getUsers();
+        const me = users.find(u => u.id === CURRENT_USER.id);
+        if (me && me.isAdmin) { defaultData(); }
+      }
     } else {
-      defaultData();
-      saveData();
+      const users = WW.getUsers();
+      const me = users.find(u => u.id === CURRENT_USER.id);
+      if (me && me.isAdmin) { defaultData(); }
     }
   } catch(e) {
-    defaultData();
-    try { saveData(); } catch(e2) {}
+    console.error('loadData error', e);
   }
+  saveData();
   renderAll();
 }
 
 function saveData() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(D)); } catch(e) {}
+  if (!CURRENT_USER) return;
+  try { WW.saveUserData(CURRENT_USER.id, D); } catch(e) {}
 }
 
 function inr(n) {
