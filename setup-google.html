@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthWise — Configure Google Sign-In</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#1a472a;--gold:#c8a84b;--paper:#faf9f6;--ink:#0f0f0f;--sans:'DM Sans',sans-serif;--serif:'DM Serif Display',serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:2rem;max-width:700px;margin:0 auto}
+h1{font-family:var(--serif);font-size:2rem;margin-bottom:.5rem}
+.logo{font-family:var(--serif);font-size:1.3rem;color:var(--ink);margin-bottom:2rem;display:block}
+.logo span{color:var(--gold)}
+.step{background:white;border:1px solid #e8e5de;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem}
+.step-num{display:inline-block;background:var(--accent);color:white;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:.8rem;font-weight:700;margin-bottom:.75rem}
+.step h3{font-size:1rem;font-weight:600;margin-bottom:.5rem}
+.step p,.step li{font-size:.875rem;color:#4a4a4a;line-height:1.7;margin-bottom:.3rem}
+.step ul{padding-left:1.25rem}
+.code{background:#f1f5f9;padding:.2rem .5rem;border-radius:4px;font-family:monospace;font-size:.82rem;color:#1a472a}
+.big-code{background:#0f0f0f;color:#86efac;padding:1rem;border-radius:8px;font-family:monospace;font-size:.82rem;margin:.75rem 0;line-height:1.8;overflow-x:auto;white-space:pre}
+.input-box{width:100%;padding:.65rem .85rem;border:2px solid #e8e5de;border-radius:8px;font-family:var(--sans);font-size:.875rem;margin:.5rem 0;outline:none}
+.input-box:focus{border-color:var(--accent)}
+.btn{padding:.7rem 1.5rem;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:.875rem;font-weight:600}
+.btn:hover{background:#2d6a4f}
+.warn{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.75rem 1rem;font-size:.8rem;color:#92400e;margin-bottom:1.5rem}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<a class="logo" href="index.html">Wealth<span>Wise</span></a>
+<h1>Configure Google Sign-In</h1>
+<p style="color:#8a8a8a;margin-bottom:1.5rem;font-size:.9rem">One-time setup · Takes about 5 minutes · Completely free</p>
+
+<div class="warn">⚠️ This page helps you configure Google OAuth for your WealthWise deployment. You only need to do this once.</div>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <h3>Go to Google Cloud Console</h3>
+  <p>Open <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> and sign in with <strong>praveenmachat@gmail.com</strong></p>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <h3>Create a new project</h3>
+  <ul>
+    <li>Click the project dropdown at the top → <strong>New Project</strong></li>
+    <li>Name: <span class="code">WealthWise</span> → Click <strong>Create</strong></li>
+    <li>Wait ~30 seconds for it to create, then select it</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <h3>Configure OAuth consent screen</h3>
+  <ul>
+    <li>Go to <strong>APIs & Services → OAuth consent screen</strong></li>
+    <li>Select <strong>External</strong> → Click Create</li>
+    <li>App name: <span class="code">WealthWise</span></li>
+    <li>User support email: <span class="code">praveenmachat@gmail.com</span></li>
+    <li>Developer email: <span class="code">praveenmachat@gmail.com</span></li>
+    <li>Click <strong>Save and Continue</strong> through all steps</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <h3>Create OAuth credentials</h3>
+  <ul>
+    <li>Go to <strong>APIs & Services → Credentials</strong></li>
+    <li>Click <strong>+ Create Credentials → OAuth 2.0 Client ID</strong></li>
+    <li>Application type: <strong>Web application</strong></li>
+    <li>Name: <span class="code">WealthWise Web</span></li>
+    <li>Under <strong>Authorized JavaScript origins</strong> add:<br>
+      <span class="code">https://wealthwisemsp.netlify.app</span><br>
+      <span class="code">http://localhost</span> (for local testing)
+    </li>
+    <li>Click <strong>Create</strong></li>
+    <li>Copy the <strong>Client ID</strong> (ends in .apps.googleusercontent.com)</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <h3>Paste your Client ID here</h3>
+  <p>Paste the Client ID you copied from Google Cloud Console:</p>
+  <input class="input-box" id="client-id-input" placeholder="123456789-abc123def456.apps.googleusercontent.com">
+  <button class="btn" onclick="generateFiles()">Generate updated login.html</button>
+  <div id="output" style="display:none;margin-top:1rem">
+    <p style="font-size:.8rem;color:#16a34a;font-weight:600;margin-bottom:.5rem">✓ Copy this and replace line in your login.html:</p>
+    <div class="big-code" id="code-output"></div>
+    <p style="font-size:.78rem;color:#8a8a8a;margin-top:.5rem">Find <code>YOUR_GOOGLE_CLIENT_ID</code> in login.html and replace with the above value</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <h3>Add test user (while in testing mode)</h3>
+  <ul>
+    <li>Go back to <strong>OAuth consent screen</strong></li>
+    <li>Scroll to <strong>Test users</strong> → Click <strong>Add users</strong></li>
+    <li>Add: <span class="code">praveenmachat@gmail.com</span></li>
+    <li>Click Save — now you can sign in with your Google account!</li>
+    <li>To allow all users: click <strong>Publish App</strong> (takes ~a few days for Google review)</li>
+  </ul>
+</div>
+
+<div class="step" style="border-color:#22c55e">
+  <div class="step-num" style="background:#22c55e">✓</div>
+  <h3>You're done!</h3>
+  <p>Upload the updated <strong>login.html</strong> and <strong>auth.js</strong> to GitHub → Netlify auto-deploys. Your Google Sign-In button will appear on the login page.</p>
+</div>
+
+<script>
+function generateFiles() {
+  const clientId = document.getElementById('client-id-input').value.trim();
+  if (!clientId || !clientId.includes('.apps.googleusercontent.com')) {
+    alert('Please paste a valid Google Client ID (ends with .apps.googleusercontent.com)');
+    return;
+  }
+  document.getElementById('code-output').textContent = `data-client_id="${clientId}"`;
+  document.getElementById('output').style.display = 'block';
+}
+</script>
+</body>
+</html>

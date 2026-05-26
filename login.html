@@ -6,6 +6,7 @@
 <title>WealthWise — Sign In / Register</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="auth.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
   --ink:#0f0f0f; --ink-soft:#4a4a4a; --ink-muted:#8a8a8a;
@@ -51,6 +52,7 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 .strength-fill{height:100%;border-radius:2px;transition:width .3s,background .3s}
 .footer-text{font-size:0.78rem;color:var(--ink-muted);text-align:center;margin-top:1.25rem}
 .footer-text a{color:var(--accent);text-decoration:none;font-weight:500}
+.google-user-badge{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:.6rem .85rem;font-size:.78rem;color:#1b5e20;margin-bottom:1rem;display:none}
 .first-user-badge{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.6rem .85rem;font-size:0.78rem;color:#92400e;margin-bottom:1.25rem;display:none}
 </style>
 </head>
@@ -63,9 +65,32 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 <div class="main">
   <div class="card">
     <div class="card-title">Welcome</div>
-    <div class="card-sub">Sign in to your financial dashboard</div>
+    <div class="card-sub">Sign in to your global financial dashboard</div>
 
-    <div class="tabs">
+      <!-- GOOGLE SIGN IN -->
+  <div id="google-section" style="margin-bottom:1.25rem">
+    <div id="g_id_onload"
+      data-client_id="YOUR_GOOGLE_CLIENT_ID"
+      data-context="signin"
+      data-ux_mode="popup"
+      data-callback="handleGoogleSignIn"
+      data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-shape="rectangular"
+      data-theme="outline"
+      data-text="signin_with"
+      data-size="large"
+      data-logo_alignment="left"
+      data-width="360">
+    </div>
+    <div id="google-msg" class="msg" style="margin-top:.75rem"></div>
+  </div>
+
+  <div class="divider">or use email</div>
+
+  <div class="tabs">
       <div class="tab active" onclick="switchTab('login')">Sign in</div>
       <div class="tab" onclick="switchTab('register')">Create account</div>
     </div>
@@ -126,6 +151,47 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 </div>
 
 <script>
+// ─── GOOGLE SIGN IN HANDLER ───
+function handleGoogleSignIn(response) {
+  try {
+    // Decode the JWT credential from Google
+    const base64 = response.credential.split('.')[1];
+    const pad = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    const payload = JSON.parse(atob(pad));
+    const { name, email, picture, sub } = payload;
+
+    // Check if user exists, if not auto-register them
+    let user = WW.findUser(email);
+    if (!user) {
+      // Auto-register Google user
+      const users = WW.getUsers();
+      user = {
+        id: 'g_' + sub,
+        name: name,
+        email: email.toLowerCase(),
+        password: 'google_oauth_' + sub, // not used for login
+        createdAt: new Date().toISOString(),
+        isAdmin: users.length === 0,
+        googleId: sub,
+        picture: picture,
+        loginMethod: 'google'
+      };
+      users.push(user);
+      WW.saveUsers(users);
+    }
+    WW.setSession(user);
+    const msgEl = document.getElementById('google-msg');
+    msgEl.className = 'msg success';
+    msgEl.textContent = '✓ Welcome, ' + name + '! Redirecting…';
+    setTimeout(() => window.location.href = 'app.html', 800);
+  } catch(e) {
+    const msgEl = document.getElementById('google-msg');
+    msgEl.className = 'msg error';
+    msgEl.textContent = 'Google sign-in failed. Please try email login.';
+    console.error(e);
+  }
+}
+
 // Check if already logged in
 window.addEventListener('DOMContentLoaded', () => {
   if (WW.isLoggedIn()) { window.location.href = 'app.html'; return; }
