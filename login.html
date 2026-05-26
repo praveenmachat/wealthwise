@@ -3,74 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WealthWise — Sign In / Register</title>
+<title>WealthWise — Sign In</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="auth.js"></script>
 <style>
-:root {
-  --ink:#0f0f0f; --ink-soft:#4a4a4a; --ink-muted:#8a8a8a;
-  --paper:#faf9f6; --paper-warm:#f2f0eb; --paper-mid:#e8e5de;
-  --accent:#1a472a; --accent-light:#2d6a4f; --gold:#c8a84b;
-  --danger:#dc2626; --danger-bg:#fef2f2;
-  --success:#16a34a; --success-bg:#f0fdf4;
-  --serif:'DM Serif Display',serif; --sans:'DM Sans',sans-serif;
-  --r:10px;
+:root{
+  --ink:#0f0f0f;--ink-soft:#4a4a4a;--ink-muted:#8a8a8a;
+  --paper:#faf9f6;--paper-warm:#f2f0eb;--paper-mid:#e8e5de;
+  --accent:#1a472a;--accent-l:#2d6a4f;--gold:#c8a84b;
+  --ok:#16a34a;--ok-bg:#f0fdf4;--err:#dc2626;--err-bg:#fef2f2;
+  --serif:"DM Serif Display",serif;--sans:"DM Sans",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOP BAR */
 .topbar{background:var(--ink);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:var(--serif);font-size:1.4rem;color:white}
+.logo{font-family:var(--serif);font-size:1.4rem;color:white;text-decoration:none}
 .logo span{color:var(--gold)}
-.back{font-size:0.78rem;color:rgba(255,255,255,0.5);text-decoration:none}
-.back:hover{color:white}
-.main{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem}
-.card{background:white;border-radius:16px;border:1px solid var(--paper-mid);padding:2.5rem;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.06)}
-.card-title{font-family:var(--serif);font-size:1.75rem;color:var(--ink);margin-bottom:.3rem}
-.card-sub{font-size:0.85rem;color:var(--ink-muted);margin-bottom:2rem}
+.back-link{font-size:.78rem;color:rgba(255,255,255,.5);text-decoration:none}
+.back-link:hover{color:white}
+
+/* MAIN */
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;
+  background:linear-gradient(135deg,var(--paper) 60%,var(--paper-warm) 100%)}
+
+/* CARD */
+.card{background:white;border-radius:16px;border:1px solid var(--paper-mid);
+  padding:2.5rem;width:100%;max-width:420px;
+  box-shadow:0 8px 32px rgba(0,0,0,.08)}
+.card-logo{font-family:var(--serif);font-size:1.75rem;color:var(--ink);margin-bottom:.25rem}
+.card-logo span{color:var(--accent)}
+.card-sub{font-size:.84rem;color:var(--ink-muted);margin-bottom:2rem}
+
+/* TABS */
 .tabs{display:flex;border-bottom:2px solid var(--paper-mid);margin-bottom:1.75rem}
-.tab{flex:1;padding:.7rem;text-align:center;font-size:0.85rem;font-weight:500;cursor:pointer;color:var(--ink-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s}
+.tab{flex:1;padding:.65rem;text-align:center;font-size:.84rem;font-weight:500;
+  cursor:pointer;color:var(--ink-muted);border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* FORMS */
 .form{display:none}.form.active{display:block}
 .field{margin-bottom:1rem}
-.field label{font-size:0.78rem;font-weight:500;color:var(--ink-soft);display:block;margin-bottom:5px}
-.field input{width:100%;padding:.65rem .85rem;border:1.5px solid var(--paper-mid);border-radius:8px;font-family:var(--sans);font-size:0.9rem;color:var(--ink);outline:none;transition:border-color .15s}
+.field label{font-size:.75rem;font-weight:500;color:var(--ink-soft);display:block;margin-bottom:4px}
+.field input{width:100%;padding:.65rem .85rem;border:1.5px solid var(--paper-mid);
+  border-radius:8px;font-family:var(--sans);font-size:.9rem;color:var(--ink);outline:none;transition:border-color .15s}
 .field input:focus{border-color:var(--accent)}
-.field input.error{border-color:var(--danger)}
 .pw-wrap{position:relative}
-.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink-muted);font-size:0.8rem;padding:4px}
-.msg{font-size:0.8rem;padding:.65rem .85rem;border-radius:8px;margin-bottom:1rem;display:none}
-.msg.error{background:var(--danger-bg);color:var(--danger);display:block}
-.msg.success{background:var(--success-bg);color:var(--success);display:block}
-.btn{width:100%;padding:.75rem;background:var(--accent);color:white;border:none;border-radius:8px;font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover{background:var(--accent-light)}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--ink-muted);font-size:.75rem;padding:4px;font-family:var(--sans)}
+
+/* MESSAGES */
+.msg{font-size:.8rem;padding:.65rem .85rem;border-radius:8px;margin-bottom:1rem;display:none}
+.msg.error{background:var(--err-bg);color:var(--err);display:block}
+.msg.success{background:var(--ok-bg);color:var(--ok);display:block}
+
+/* BUTTON */
+.btn{width:100%;padding:.8rem;background:var(--accent);color:white;border:none;
+  border-radius:8px;font-family:var(--sans);font-size:.9rem;font-weight:600;
+  cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:var(--accent-l)}
 .btn:disabled{opacity:.6;cursor:not-allowed}
-.divider{display:flex;align-items:center;gap:10px;margin:1.25rem 0;color:var(--ink-muted);font-size:0.78rem}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--paper-mid)}
-.password-rules{font-size:0.75rem;color:var(--ink-muted);margin-top:5px;line-height:1.5}
-.strength-bar{height:4px;border-radius:2px;background:var(--paper-mid);overflow:hidden;margin-top:6px}
+
+/* PASSWORD STRENGTH */
+.strength-bar{height:4px;border-radius:2px;background:var(--paper-mid);overflow:hidden;margin-top:5px}
 .strength-fill{height:100%;border-radius:2px;transition:width .3s,background .3s}
-.footer-text{font-size:0.78rem;color:var(--ink-muted);text-align:center;margin-top:1.25rem}
-.footer-text a{color:var(--accent);text-decoration:none;font-weight:500}
-.first-user-badge{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:.6rem .85rem;font-size:0.78rem;color:#92400e;margin-bottom:1.25rem;display:none}
+.strength-label{font-size:.7rem;color:var(--ink-muted);margin-top:3px}
+
+/* FOOTER TEXT */
+.foot{font-size:.78rem;color:var(--ink-muted);text-align:center;margin-top:1.25rem}
+.foot a{color:var(--accent);text-decoration:none;font-weight:500}
+.foot a:hover{text-decoration:underline}
+
+/* FIRST USER BADGE */
+.admin-badge{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;
+  padding:.6rem .85rem;font-size:.78rem;color:#92400e;margin-bottom:1.25rem;display:none}
+
+/* FEATURES SIDE NOTE */
+.features{margin-top:1.5rem;padding:1rem;background:var(--paper-warm);border-radius:8px}
+.features p{font-size:.72rem;color:var(--ink-muted);line-height:1.6}
+.features strong{color:var(--ink-soft)}
 </style>
 </head>
 <body>
+
 <div class="topbar">
-  <div class="logo">Wealth<span>Wise</span></div>
-  <a href="index.html" class="back">← Back to website</a>
+  <a href="index.html" class="logo">Wealth<span>Wise</span></a>
+  <a href="index.html" class="back-link">← Back to website</a>
 </div>
 
 <div class="main">
   <div class="card">
-    <div class="card-title">Welcome</div>
-    <div class="card-sub">Sign in to your financial dashboard</div>
+    <div class="card-logo">Wealth<span>Wise</span></div>
+    <div class="card-sub">Your global personal finance dashboard</div>
 
-      <div class="tabs">
-      <div class="tab active" onclick="switchTab('login')">Sign in</div>
-      <div class="tab" onclick="switchTab('register')">Create account</div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Sign in</button>
+      <button class="tab" onclick="switchTab('register')">Create account</button>
     </div>
 
-    <!-- LOGIN FORM -->
+    <!-- ── LOGIN ── -->
     <div class="form active" id="form-login">
       <div class="msg" id="login-msg"></div>
       <div class="field">
@@ -84,19 +117,23 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
           <button class="pw-toggle" onclick="togglePwd('login-pwd',this)" type="button">Show</button>
         </div>
       </div>
-      <button class="btn" id="login-btn" onclick="doLogin()">Sign in →</button>
-      <div class="footer-text">Don't have an account? <a href="#" onclick="switchTab('register');return false">Create one free</a></div>
+      <button class="btn" id="login-btn" onclick="doLogin()">
+        Sign in →
+      </button>
+      <div class="foot">
+        Don't have an account? <a href="#" onclick="switchTab('register');return false">Create one free</a>
+      </div>
     </div>
 
-    <!-- REGISTER FORM -->
+    <!-- ── REGISTER ── -->
     <div class="form" id="form-register">
-      <div class="first-user-badge" id="first-user-badge">
-        🎉 You'll be the first user and admin of WealthWise!
+      <div class="admin-badge" id="admin-badge">
+        🎉 You'll be the first user and admin of this WealthWise!
       </div>
       <div class="msg" id="reg-msg"></div>
       <div class="field">
         <label>Full name</label>
-        <input type="text" id="reg-name" placeholder="Praveen M S" autocomplete="name">
+        <input type="text" id="reg-name" placeholder="Your full name" autocomplete="name">
       </div>
       <div class="field">
         <label>Email address</label>
@@ -105,116 +142,142 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
       <div class="field">
         <label>Password</label>
         <div class="pw-wrap">
-          <input type="password" id="reg-pwd" placeholder="Min. 6 characters" autocomplete="new-password" oninput="checkStrength(this.value)">
+          <input type="password" id="reg-pwd" placeholder="Min. 6 characters"
+            autocomplete="new-password" oninput="checkStrength(this.value)">
           <button class="pw-toggle" onclick="togglePwd('reg-pwd',this)" type="button">Show</button>
         </div>
-        <div class="strength-bar"><div class="strength-fill" id="strength-fill" style="width:0%"></div></div>
-        <div class="password-rules" id="strength-label">Enter a password</div>
+        <div class="strength-bar"><div class="strength-fill" id="s-fill" style="width:0%"></div></div>
+        <div class="strength-label" id="s-label">Enter a password</div>
       </div>
       <div class="field">
         <label>Confirm password</label>
         <div class="pw-wrap">
-          <input type="password" id="reg-pwd2" placeholder="Repeat password" autocomplete="new-password">
+          <input type="password" id="reg-pwd2" placeholder="Repeat your password" autocomplete="new-password">
           <button class="pw-toggle" onclick="togglePwd('reg-pwd2',this)" type="button">Show</button>
         </div>
       </div>
-      <button class="btn" id="reg-btn" onclick="doRegister()">Create account →</button>
-      <div class="footer-text">Already have an account? <a href="#" onclick="switchTab('login');return false">Sign in</a></div>
+      <button class="btn" id="reg-btn" onclick="doRegister()">
+        Create account →
+      </button>
+      <div class="foot">
+        Already have an account? <a href="#" onclick="switchTab('login');return false">Sign in</a>
+      </div>
+
+      <div class="features">
+        <p><strong>What you get:</strong> Stocks · Mutual funds · Bank accounts · Loans ·
+        Credit cards · Real estate · Crypto · Multi-currency · Live FX rates · Smart insights</p>
+      </div>
     </div>
 
   </div>
 </div>
 
 <script>
-// Check if already logged in
-window.addEventListener('DOMContentLoaded', () => {
-  if (WW.isLoggedIn()) { window.location.href = 'app.html'; return; }
-  // Check if first user
+window.addEventListener("DOMContentLoaded", () => {
+  // Already logged in → go straight to dashboard
+  if (WW.isLoggedIn()) {
+    window.location.href = "app.html";
+    return;
+  }
+  // Show admin badge if first user
   if (WW.getUsers().length === 0) {
-    document.getElementById('first-user-badge').style.display = 'block';
+    document.getElementById("admin-badge").style.display = "block";
   }
   // Enter key support
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      const activeForm = document.querySelector('.form.active').id;
-      if (activeForm === 'form-login') doLogin();
-      else doRegister();
-    }
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const active = document.querySelector(".form.active").id;
+    if (active === "form-login") doLogin();
+    else doRegister();
   });
 });
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
-  document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
-  document.getElementById('form-'+tab).classList.add('active');
+  document.querySelectorAll(".tab").forEach((t,i) =>
+    t.classList.toggle("active", (i===0&&tab==="login")||(i===1&&tab==="register")));
+  document.querySelectorAll(".form").forEach(f => f.classList.remove("active"));
+  document.getElementById("form-"+tab).classList.add("active");
   clearMsgs();
 }
 
 function clearMsgs() {
-  document.querySelectorAll('.msg').forEach(m => { m.className='msg'; m.textContent=''; });
+  document.querySelectorAll(".msg").forEach(m => { m.className="msg"; m.textContent=""; });
 }
 
 function showMsg(id, type, text) {
   const el = document.getElementById(id);
-  el.className = 'msg ' + type;
+  el.className = "msg " + type;
   el.textContent = text;
 }
 
 function togglePwd(inputId, btn) {
   const input = document.getElementById(inputId);
-  input.type = input.type === 'password' ? 'text' : 'password';
-  btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+  input.type = input.type === "password" ? "text" : "password";
+  btn.textContent = input.type === "password" ? "Show" : "Hide";
 }
 
 function checkStrength(pwd) {
-  const fill = document.getElementById('strength-fill');
-  const label = document.getElementById('strength-label');
+  const fill = document.getElementById("s-fill");
+  const label = document.getElementById("s-label");
   let score = 0;
   if (pwd.length >= 6) score++;
   if (pwd.length >= 10) score++;
   if (/[A-Z]/.test(pwd)) score++;
   if (/[0-9]/.test(pwd)) score++;
   if (/[^A-Za-z0-9]/.test(pwd)) score++;
-  const levels = [{w:'0%',c:'#e5e7eb',l:'Enter a password'},{w:'25%',c:'#ef4444',l:'Weak'},{w:'50%',c:'#f97316',l:'Fair'},{w:'75%',c:'#eab308',l:'Good'},{w:'100%',c:'#22c55e',l:'Strong'}];
+  const levels = [
+    {w:"0%",  c:"#e5e7eb", l:"Enter a password"},
+    {w:"25%", c:"#ef4444", l:"Weak"},
+    {w:"50%", c:"#f97316", l:"Fair"},
+    {w:"75%", c:"#eab308", l:"Good"},
+    {w:"100%",c:"#22c55e", l:"Strong ✓"},
+  ];
   const lv = levels[Math.min(score, 4)];
-  fill.style.width = lv.w; fill.style.background = lv.c; label.textContent = lv.l;
+  fill.style.width = lv.w;
+  fill.style.background = lv.c;
+  label.textContent = lv.l;
+  label.style.color = lv.c;
 }
 
 function doLogin() {
   clearMsgs();
-  const email = document.getElementById('login-email').value.trim();
-  const pwd = document.getElementById('login-pwd').value;
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = 'Signing in…';
+  const email = document.getElementById("login-email").value.trim();
+  const pwd   = document.getElementById("login-pwd").value;
+  const btn   = document.getElementById("login-btn");
+  if (!email || !pwd) { showMsg("login-msg","error","Please enter your email and password."); return; }
+  btn.disabled = true; btn.textContent = "Signing in…";
   setTimeout(() => {
     const result = WW.login(email, pwd);
     if (result.ok) {
-      showMsg('login-msg', 'success', '✓ Welcome back, ' + result.user.name + '! Redirecting…');
-      setTimeout(() => window.location.href = 'app.html', 800);
+      showMsg("login-msg","success","✓ Welcome back, "+result.user.name+"! Loading dashboard…");
+      setTimeout(() => window.location.href = "app.html", 700);
     } else {
-      showMsg('login-msg', 'error', result.msg);
-      btn.disabled = false; btn.textContent = 'Sign in →';
+      showMsg("login-msg","error", result.msg);
+      btn.disabled = false; btn.textContent = "Sign in →";
     }
   }, 400);
 }
 
 function doRegister() {
   clearMsgs();
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pwd = document.getElementById('reg-pwd').value;
-  const pwd2 = document.getElementById('reg-pwd2').value;
-  if (pwd !== pwd2) { showMsg('reg-msg','error','Passwords do not match.'); return; }
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.textContent = 'Creating account…';
+  const name  = document.getElementById("reg-name").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const pwd   = document.getElementById("reg-pwd").value;
+  const pwd2  = document.getElementById("reg-pwd2").value;
+  if (!name)  { showMsg("reg-msg","error","Please enter your full name."); return; }
+  if (!email) { showMsg("reg-msg","error","Please enter your email address."); return; }
+  if (!pwd)   { showMsg("reg-msg","error","Please choose a password."); return; }
+  if (pwd !== pwd2) { showMsg("reg-msg","error","Passwords do not match."); return; }
+  const btn = document.getElementById("reg-btn");
+  btn.disabled = true; btn.textContent = "Creating account…";
   setTimeout(() => {
     const result = WW.register(name, email, pwd);
     if (result.ok) {
-      showMsg('reg-msg','success','✓ Account created! Welcome, '+result.user.name+'! Redirecting…');
-      setTimeout(() => window.location.href = 'app.html', 900);
+      showMsg("reg-msg","success","✓ Account created! Welcome, "+result.user.name+"! Loading dashboard…");
+      setTimeout(() => window.location.href = "app.html", 800);
     } else {
-      showMsg('reg-msg','error',result.msg);
-      btn.disabled = false; btn.textContent = 'Create account →';
+      showMsg("reg-msg","error", result.msg);
+      btn.disabled = false; btn.textContent = "Create account →";
     }
   }, 400);
 }
