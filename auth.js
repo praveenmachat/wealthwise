@@ -167,6 +167,7 @@ const WW = {
     }
     patchNavigation();
     recoverLocalWealthWiseData();
+    applyGeojitStatementSnapshot();
     renderAi();
     syncWealthWiseData('read').then(j => {
       if (j && j.data && typeof D !== 'undefined' && dataScore(j.data) > dataScore(D)) {
@@ -251,6 +252,54 @@ const WW = {
       expenses: D.expenses || [],
       liabilities: { loans: D.loans || [], cards: D.cards || [] }
     };
+  }
+
+  function applyGeojitStatementSnapshot(){
+    if (typeof D === 'undefined') return;
+    ensureAiDataShape();
+    const snapshotId = 'geojit-2026-09-19-14-holdings';
+    if (D.settings?.lastStockSnapshot === snapshotId) return;
+    const geojitStocks = [
+      {sym:'ASHOKLEY',name:'ASHOK LEYLAND LIMITED EQ NEW FV RE.1/-',isin:'INE208A01029',qty:250,ltp:163.00,value:40750.00},
+      {sym:'BAJFINANCE',name:'BAJAJ FINANCE LIMITED EQ NEW FV RE.1/-',isin:'INE296A01032',qty:90,ltp:1040.30,value:93627.00},
+      {sym:'BALKRISIND',name:'BALKRISHNA INDUSTRIES LIMITED EQ NEW F.V RS.2/-',isin:'INE787D01026',qty:25,ltp:2265.30,value:56632.50},
+      {sym:'COALINDIA',name:'COAL INDIA LTD EQ',isin:'INE522F01014',qty:150,ltp:409.90,value:61485.00},
+      {sym:'HDFCBANK',name:'HDFC BANK LIMITED EQ NEW FV RE. 1/-',isin:'INE040A01034',qty:100,ltp:731.00,value:73100.00},
+      {sym:'IOC',name:'INDIAN OIL CORPORATION LIMITED EQ',isin:'INE242A01010',qty:200,ltp:137.00,value:27400.00},
+      {sym:'ITC',name:'ITC LIMITED EQ NEW FV RE.1/-',isin:'INE154A01025',qty:200,ltp:262.30,value:52460.00},
+      {sym:'JYOTHYLAB',name:'JYOTHY LABS LIMITED EQ NEW RE. 1/-',isin:'INE668F01031',qty:260,ltp:195.07,value:50718.20},
+      {sym:'M&M',name:'MAHINDRA AND MAHINDRA LIMITED EQ NEW F.V. RS.5',isin:'INE101A01026',qty:15,ltp:3052.00,value:45780.00},
+      {sym:'POWERGRID',name:'POWER GRID CORPORATION OF INDIA LIMITED EQ',isin:'INE752E01010',qty:50,ltp:270.30,value:13515.00},
+      {sym:'RELIANCE',name:'RELIANCE INDUSTRIES LIMITED EQ',isin:'INE002A01018',qty:50,ltp:1226.40,value:61320.00},
+      {sym:'SUNPHARMA',name:'SUN PHARMACEUTICAL INDUSTRIES LIMITED EQ NEW F.V. RE.1/-',isin:'INE044A01036',qty:30,ltp:1837.30,value:55119.00},
+      {sym:'THERMAX',name:'THERMAX LIMITED EQ NEW FV RS.2/-',isin:'INE152A01029',qty:15,ltp:3551.90,value:53278.50},
+      {sym:'TIMKEN',name:'TIMKEN INDIA LIMITED EQ',isin:'INE325A01013',qty:15,ltp:3124.20,value:46863.00}
+    ];
+    const existing = Array.isArray(D.stocks) ? D.stocks : [];
+    const bySymbol = new Map(existing.map(stock => [String(stock.sym || '').toUpperCase(), stock]));
+    D.stocks = geojitStocks.map(stock => {
+      const old = bySymbol.get(stock.sym);
+      return {
+        sym: stock.sym,
+        name: stock.name,
+        isin: stock.isin,
+        qty: stock.qty,
+        avg: Number(old?.avg) || stock.ltp,
+        ltp: stock.ltp,
+        cur: 'INR',
+        exch: 'NSE (India)',
+        note: 'Updated from Geojit DP statement dated 19 Sep 2026',
+        statementValue: stock.value
+      };
+    });
+    D.settings = D.settings || {};
+    D.settings.lastStockSnapshot = snapshotId;
+    try {
+      const user = WW.getSession();
+      if (user) WW.saveUserData(user.id, D);
+    } catch(e) {}
+    if (typeof renderAll === 'function') renderAll();
+    syncWealthWiseData('write').catch(() => {});
   }
 
   function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
