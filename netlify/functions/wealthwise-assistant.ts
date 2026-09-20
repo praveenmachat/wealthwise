@@ -11,7 +11,7 @@ const json = (body, status = 200) =>
     },
   });
 
-const env = (key) => globalThis.Netlify?.env?.get(key) || process.env[key];
+const env = (key) => globalThis.Netlify?.env?.get(key);
 
 function compactContext(context) {
   return {
