@@ -273,7 +273,7 @@ const WW = {
       if (!r.ok) throw new Error(j.error || 'Assistant request failed');
       AI_MESSAGES.push({role:'assistant', content:j.reply || 'Done.'});
     } catch(e) {
-      AI_MESSAGES.push({role:'assistant', content:'I could not reach the AI service. Please check that OPENAI_API_KEY is set in Netlify.'});
+      AI_MESSAGES.push({role:'assistant', content:'AI service needs configuration: ' + (e?.message || 'WEALTHWISE_OPENAI_API_KEY is not configured in Netlify.')});
     }
     setAiStatus('');
     renderAi();
