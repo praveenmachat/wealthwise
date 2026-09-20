@@ -26,8 +26,8 @@ function compactContext(context) {
 }
 
 async function callOpenAI(payload) {
-  const apiKey = env("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  const apiKey = env("WEALTHWISE_OPENAI_API_KEY");
+  if (!apiKey) throw new Error("WEALTHWISE_OPENAI_API_KEY is not configured.");
   const model = env("OPENAI_MODEL") || "gpt-5";
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
