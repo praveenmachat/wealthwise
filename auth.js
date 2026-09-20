@@ -166,9 +166,10 @@ const WW = {
       main.insertAdjacentHTML('beforeend', html);
     }
     patchNavigation();
+    recoverLocalWealthWiseData();
     renderAi();
     syncWealthWiseData('read').then(j => {
-      if (j && j.data && typeof D !== 'undefined') {
+      if (j && j.data && typeof D !== 'undefined' && dataScore(j.data) > dataScore(D)) {
         Object.keys(D).forEach(k => delete D[k]);
         Object.assign(D, j.data);
         ensureAiDataShape();
@@ -202,6 +203,41 @@ const WW = {
     if (typeof D === 'undefined') return;
     ['stocks','mf','crypto','otherInv','banks','fds','loans','cards','expenses'].forEach(k => { if (!Array.isArray(D[k])) D[k] = []; });
     if (!D.settings) D.settings = { baseCur: 'INR' };
+  }
+
+  function dataScore(data){
+    if (!data || typeof data !== 'object') return 0;
+    return ['stocks','mf','crypto','otherInv','banks','fds','loans','cards','expenses']
+      .reduce((sum, key) => sum + (Array.isArray(data[key]) ? data[key].length : 0), 0);
+  }
+
+  function recoverLocalWealthWiseData(){
+    if (typeof D === 'undefined') return;
+    ensureAiDataShape();
+    if (dataScore(D) > 0) return;
+    const user = WW.getSession();
+    if (!user) return;
+    let best = null;
+    let bestScore = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith('ww_data_')) continue;
+        const candidate = JSON.parse(localStorage.getItem(key) || 'null');
+        const score = dataScore(candidate);
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+      if (best && bestScore > 0) {
+        Object.keys(D).forEach(k => delete D[k]);
+        Object.assign(D, best);
+        ensureAiDataShape();
+        WW.saveUserData(user.id, D);
+        if (typeof renderAll === 'function') renderAll();
+      }
+    } catch(e) {}
   }
 
   function aiPortfolioContext(){
