@@ -220,7 +220,7 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:
 <!-- STOCKS -->
 <div class="page" id="page-stocks">
   <div class="ph"><div><div class="pt">Stocks</div><div class="ps">Direct equity holdings — all exchanges</div></div>
-  <div class="btn-row"><button class="add-btn" onclick="openModal('stock')">+ Add stock</button></div></div>
+  <div class="btn-row"><button class="add-btn" onclick="openModal('stock')">+ Add stock</button><button class="add-btn" onclick="openModal('geojit')">Import Geojit statement</button></div></div>
   <div class="mg" id="st-mg"></div>
   <div class="items" id="st-list"></div>
 </div>
@@ -323,6 +323,14 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:
 </div>
 
 <!-- MODALS -->
+<div class="modal-overlay" id="modal-geojit"><div class="modal">
+  <h3>Import Geojit statement</h3>
+  <p>Paste the table copied from your Geojit email, including its column headings and total.</p>
+  <textarea id="geojit-table" rows="8" style="width:100%" aria-label="Geojit holdings table"></textarea>
+  <p id="geojit-status" role="status"></p>
+  <div class="mact"><button class="btn-cancel" onclick="closeModal('geojit')">Cancel</button>
+  <button class="btn-save" onclick="importGeojit()">Review and save</button></div>
+</div></div>
 <div class="modal-overlay" id="modal-stock"><div class="modal">
   <h3>Add stock holding</h3>
   <div class="fr"><div class="field"><label>Exchange / Market</label><select id="s-exch"><option>NSE (India)</option><option>BSE (India)</option><option>NYSE (USA)</option><option>NASDAQ (USA)</option><option>LSE (UK)</option><option>DFM (UAE)</option><option>ADX (UAE)</option><option>SGX (Singapore)</option><option>ASX (Australia)</option><option>Other</option></select></div>
@@ -654,6 +662,70 @@ function loadData() {
   fetchRates().then(()=>renderAll());
 }
 
+function parseGeojitTable(text) {
+  const rows = text.trim().split(/\r?\n/).map(line => line.split('\t').map(cell => cell.trim()));
+  const header = rows.findIndex(row => row[0] === 'ISIN' && row[3] === 'Qty' &&
+    row[4] === 'ClosingRate' && row[5] === 'Value');
+  if (header < 0) throw new Error('Include the Geojit table headings.');
+  const positions = new Map();
+  const amount = cell => {
+    const value = Number(cell?.replaceAll(',', ''));
+    if (!cell || !Number.isFinite(value) || value < 0) throw new Error('Invalid statement amount.');
+    return value;
+  };
+  let total;
+  for (const row of rows.slice(header + 1)) {
+    if (!row.some(Boolean)) continue;
+    if (row[0] === 'Total') {
+      total = amount(row.slice(1).find(Boolean));
+      break;
+    }
+    const [isin, name, , shares, closingRate, value] = row;
+    if (!/^IN[A-Z0-9]{9}\d$/.test(isin) || !name || positions.has(isin)) {
+      throw new Error('Invalid or duplicate holding in the statement.');
+    }
+    const qty = amount(shares), ltp = amount(closingRate), statementValue = amount(value);
+    if (!qty || Math.abs(qty * ltp - statementValue) > 0.01) {
+      throw new Error('A holding does not match its statement value.');
+    }
+    positions.set(isin, { isin, name, qty, ltp, statementValue });
+  }
+  const sum = [...positions.values()].reduce((value, stock) => value + stock.statementValue, 0);
+  if (!positions.size || total === undefined || Math.abs(total - sum) > 0.01) {
+    throw new Error('The holdings must add up to the statement total.');
+  }
+  return { positions, total };
+}
+
+function importGeojit() {
+  const input = document.getElementById('geojit-table');
+  const status = document.getElementById('geojit-status');
+  try {
+    const { positions, total } = parseGeojitTable(input.value);
+    const count = positions.size;
+    const next = (D.stocks || []).map(stock => {
+      const position = positions.get(stock.isin);
+      if (!position) return stock;
+      positions.delete(stock.isin);
+      return { ...stock, ...position };
+    });
+    for (const position of positions.values()) {
+      next.push({ ...position, sym: position.isin, avg: null, cur: 'INR', exch: 'Geojit' });
+    }
+    if (!confirm('Save ' + count + ' holdings totaling ₹' + total.toLocaleString('en-IN') +
+      '? ' + positions.size + ' new holdings will be added. Unmatched entries will be kept.')) return;
+    if (!CURRENT_USER) throw new Error('Sign in before importing.');
+    WW.saveUserData(CURRENT_USER.id, { ...D, stocks: next });
+    D.stocks = next;
+    renderAll();
+    input.value = '';
+    status.textContent = '';
+    closeModal('geojit');
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
 function saveData(){
   if(!CURRENT_USER)return;
   if(D.settings)D.settings.baseCur=BASE_CUR;
@@ -667,7 +739,7 @@ function totals(){
   const st=D.stocks||[],mf=D.mf||[],cr=D.crypto||[],oi=D.otherInv||[];
   const bk=D.banks||[],fd=D.fds||[],ln=D.loans||[],cc=D.cards||[];
   const stInv=st.reduce((a,s)=>a+toBase(s.qty*s.avg,s.cur||'INR'),0);
-  const stVal=st.reduce((a,s)=>a+toBase(s.qty*(s.ltp||s.avg),s.cur||'INR'),0);
+  const stVal=st.reduce((a,s)=>a+toBase(s.qty*(s.ltp??s.avg),s.cur||'INR'),0);
   const mfInv=mf.reduce((a,f)=>a+toBase(f.inv,f.cur||'INR'),0);
   const mfVal=mf.reduce((a,f)=>a+toBase(f.val,f.cur||'INR'),0);
   const crInv=cr.reduce((a,c)=>a+toBase(c.qty*c.buy,c.cur||'USD'),0);
@@ -681,9 +753,10 @@ function totals(){
   const emiMo=ln.reduce((a,l)=>a+toBase(l.emi,l.cur||'INR'),0);
   const ccDue=cc.reduce((a,c)=>a+toBase(c.due,c.cur||'INR'),0);
   const sipMo=mf.reduce((a,f)=>a+toBase(f.sip||0,f.cur||'INR'),0);
+  const stKnownVal=st.filter(s=>s.avg!=null).reduce((a,s)=>a+toBase(s.qty*(s.ltp??s.avg),s.cur||'INR'),0);
   const assets=stVal+mfVal+crVal+oiVal+bankBal+fdVal;
   const liab=loanBal+ccDue;
-  return{stInv,stVal,mfInv,mfVal,crInv,crVal,oiInv,oiVal,bankBal,fdVal,fdInv,loanBal,emiMo,ccDue,sipMo,assets,liab,netWorth:assets-liab};
+  return{stInv,stVal,stKnownVal,mfInv,mfVal,crInv,crVal,oiInv,oiVal,bankBal,fdVal,fdInv,loanBal,emiMo,ccDue,sipMo,assets,liab,netWorth:assets-liab};
 }
 
 // ═══════════════════════════════════════════
@@ -701,7 +774,7 @@ function mkChart(id,cfg){
 function renderDashboard(){
   const t=totals();
   const totalInv=t.stInv+t.mfInv+t.crInv+t.oiInv;
-  const totalVal=t.stVal+t.mfVal+t.crVal+t.oiVal;
+  const totalVal=t.stKnownVal+t.mfVal+t.crVal+t.oiVal;
   const gain=totalVal-totalInv;
   const gainPct=totalInv>0?(gain/totalInv)*100:0;
   // Also show in other currency (AED if base is INR, INR if base is AED)
@@ -720,7 +793,7 @@ function renderDashboard(){
   document.getElementById('d-emi').textContent=fmtBase(t.emiMo)+'/mo';
 
   document.getElementById('d-metrics').innerHTML=[
-    {l:'Stocks',v:fmtBase(t.stVal),s:fmtBase(t.stVal-t.stInv)+' P&L',c:gcls(t.stVal-t.stInv)},
+    {l:'Stocks',v:fmtBase(t.stVal),s:fmtBase(t.stKnownVal-t.stInv)+' P&L (known cost)',c:gcls(t.stKnownVal-t.stInv)},
     {l:'Mutual Funds',v:fmtBase(t.mfVal),s:fmtBase(t.mfVal-t.mfInv)+' gain',c:gcls(t.mfVal-t.mfInv)},
     {l:'Bank + FD',v:fmtBase(t.bankBal+t.fdVal),s:(D.banks||[]).length+' accts · '+(D.fds||[]).length+' deposits'},
     {l:'Crypto',v:fmtBase(t.crVal),s:(D.crypto||[]).length+' coins',c:t.crVal>0?gcls(t.crVal-t.crInv):''},
@@ -755,7 +828,7 @@ function renderDashboard(){
 
   // PnL bar
   const pnlData=[
-    {l:'Stocks',v:t.stVal-t.stInv,c:'#7c3aed'},{l:'Mutual Funds',v:t.mfVal-t.mfInv,c:'#0ea5e9'},
+    {l:'Stocks',v:t.stKnownVal-t.stInv,c:'#7c3aed'},{l:'Mutual Funds',v:t.mfVal-t.mfInv,c:'#0ea5e9'},
     {l:'Crypto',v:t.crVal-t.crInv,c:'#f97316'},{l:'Other',v:t.oiVal-t.oiInv,c:'#84cc16'},
     {l:'FD gain',v:t.fdVal-t.fdInv,c:'#22c55e'}
   ].filter(p=>p.v!==0);
@@ -771,24 +844,24 @@ function renderStocks(){
   const st=D.stocks||[];
   document.getElementById('nb-st').textContent=st.length;
   const stInv=st.reduce((a,s)=>a+toBase(s.qty*s.avg,s.cur||'INR'),0);
-  const stVal=st.reduce((a,s)=>a+toBase(s.qty*(s.ltp||s.avg),s.cur||'INR'),0);
-  const stPnl=stVal-stInv;
+  const stVal=st.reduce((a,s)=>a+toBase(s.qty*(s.ltp??s.avg),s.cur||'INR'),0);
+  const stPnl=totals().stKnownVal-stInv;
   document.getElementById('st-mg').innerHTML=[
     {l:'Invested',v:fmtBase(stInv),s:st.length+' holdings'},
-    {l:'Current value',v:fmtBase(stVal),s:'live prices'},
-    {l:'Total P&L',v:fmtBase(stPnl),s:stInv>0?pct((stPnl/stInv)*100):'—',c:gcls(stPnl)},
-    {l:'Winners/Losers',v:st.filter(s=>(s.ltp||s.avg)>=s.avg).length+'/'+st.filter(s=>(s.ltp||s.avg)<s.avg).length,s:'of '+st.length},
+    {l:'Current value',v:fmtBase(stVal),s:'latest saved prices'},
+    {l:'P&L with known cost',v:fmtBase(stPnl),s:stInv>0?pct((stPnl/stInv)*100):'—',c:gcls(stPnl)},
+    {l:'Winners/Losers',v:st.filter(s=>s.avg!=null&&(s.ltp??s.avg)>=s.avg).length+'/'+st.filter(s=>s.avg!=null&&(s.ltp??s.avg)<s.avg).length,s:'of '+st.length},
   ].map(m=>`<div class="mc"><div class="ml">${m.l}</div><div class="mv ${m.c||''}">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
   document.getElementById('st-list').innerHTML=st.length?[...st].sort((a,b)=>((b.ltp||b.avg)-b.avg)/b.avg-((a.ltp||a.avg)-a.avg)/a.avg).map(s=>{
-    const ltp=s.ltp||s.avg,inv=s.qty*s.avg,mv=s.qty*ltp,pl=mv-inv,pp=inv>0?(pl/inv)*100:0;
+    const ltp=s.ltp??s.avg,inv=s.qty*s.avg,mv=s.qty*ltp,pl=mv-inv,pp=inv>0?(pl/inv)*100:0;
     const idx=D.stocks.indexOf(s);
     const cf=CURRENCIES.find(c=>c.code===(s.cur||'INR'))||{flag:'',symbol:'₹'};
     return `<div class="ir">
       <div class="ii" style="background:${pl>=0?'#f0fdf4':'#fef2f2'}">${pl>=0?'↑':'↓'}</div>
       <div class="iinfo"><div class="iname">${s.sym} <span style="font-size:.65rem;color:var(--ink-muted)">${s.exch||''}</span></div>
-      <div class="imeta">${cf.flag} ${s.cur||'INR'} · Qty: ${s.qty} · Avg: ${cf.symbol}${s.avg.toFixed(2)} · LTP: ${cf.symbol}${ltp.toFixed(2)}${s.note?' · '+s.note:''}</div></div>
+      <div class="imeta">${cf.flag} ${s.cur||'INR'} · Qty: ${s.qty} · Avg: ${s.avg==null?'Unknown':cf.symbol+s.avg.toFixed(2)} · LTP: ${cf.symbol}${ltp.toFixed(2)}${s.note?' · '+s.note:''}</div></div>
       <div class="iright"><div class="ival">${fmtBase(toBase(mv,s.cur||'INR'))}</div>
-      <div class="isub ${gcls(pl)}">${fmtCur(pl,s.cur||'INR')} (${pct(pp)})</div></div>
+      <div class="isub ${gcls(pl)}">${s.avg==null?'Purchase price unknown':fmtCur(pl,s.cur||'INR')+' ('+pct(pp)+')'}</div></div>
       <button class="del-btn" onclick="del('stocks',${idx})">✕</button>
     </div>`;
   }).join(''):`<div class="empty">No stocks added yet. Click "+ Add stock" to get started.</div>`;
@@ -1046,7 +1119,7 @@ function renderInsights(){
 function renderReport(){
   const t=totals();
   const totalInv=t.stInv+t.mfInv+t.crInv+t.oiInv;
-  const totalVal=t.stVal+t.mfVal+t.crVal+t.oiVal;
+  const totalVal=t.stKnownVal+t.mfVal+t.crVal+t.oiVal;
   const gain=totalVal-totalInv;
   document.getElementById('report-content').innerHTML=`
     <div style="background:white;border:1px solid var(--paper-mid);border-radius:var(--rl);padding:1.25rem;margin-bottom:1.1rem">
@@ -1061,7 +1134,7 @@ function renderReport(){
       <table class="rtbl">
         <thead><tr><th>Category</th><th>Items</th><th>Invested (${BASE_CUR})</th><th>Current value (${BASE_CUR})</th><th>Gain/Loss</th><th>Return %</th></tr></thead>
         <tbody>
-          <tr><td>Direct Stocks</td><td>${(D.stocks||[]).length}</td><td>${fmtBase(t.stInv)}</td><td>${fmtBase(t.stVal)}</td><td class="${gcls(t.stVal-t.stInv)}">${fmtBase(t.stVal-t.stInv)}</td><td class="${gcls(t.stVal-t.stInv)}">${t.stInv>0?pct((t.stVal-t.stInv)/t.stInv*100):'—'}</td></tr>
+          <tr><td>Direct Stocks</td><td>${(D.stocks||[]).length}</td><td>${fmtBase(t.stInv)}</td><td>${fmtBase(t.stVal)}</td><td class="${gcls(t.stKnownVal-t.stInv)}">${fmtBase(t.stKnownVal-t.stInv)}</td><td class="${gcls(t.stKnownVal-t.stInv)}">${t.stInv>0?pct((t.stKnownVal-t.stInv)/t.stInv*100):'—'}</td></tr>
           <tr><td>Mutual Funds</td><td>${(D.mf||[]).length}</td><td>${fmtBase(t.mfInv)}</td><td>${fmtBase(t.mfVal)}</td><td class="${gcls(t.mfVal-t.mfInv)}">${fmtBase(t.mfVal-t.mfInv)}</td><td class="${gcls(t.mfVal-t.mfInv)}">${t.mfInv>0?pct((t.mfVal-t.mfInv)/t.mfInv*100):'—'}</td></tr>
           <tr><td>Cryptocurrency</td><td>${(D.crypto||[]).length}</td><td>${fmtBase(t.crInv)}</td><td>${fmtBase(t.crVal)}</td><td class="${gcls(t.crVal-t.crInv)}">${fmtBase(t.crVal-t.crInv)}</td><td class="${gcls(t.crVal-t.crInv)}">${t.crInv>0?pct((t.crVal-t.crInv)/t.crInv*100):'—'}</td></tr>
           <tr><td>Other Investments</td><td>${(D.otherInv||[]).length}</td><td>${fmtBase(t.oiInv)}</td><td>${fmtBase(t.oiVal)}</td><td class="${gcls(t.oiVal-t.oiInv)}">${fmtBase(t.oiVal-t.oiInv)}</td><td>—</td></tr>
