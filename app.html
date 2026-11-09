@@ -556,110 +556,22 @@ function changeBaseCurrency(cur) {
 let CURRENT_USER = null;
 let D = {stocks:[],mf:[],crypto:[],otherInv:[],banks:[],fds:[],loans:[],cards:[],settings:{baseCur:'INR'}};
 
-function defaultData() {
-  D.stocks=[
-    {sym:'ASHOKLEY',qty:200,avg:168.11,ltp:153.13,cur:'INR',exch:'NSE (India)'},
-    {sym:'BAJFINANCE',qty:50,avg:895.17,ltp:910.45,cur:'INR',exch:'NSE (India)'},
-    {sym:'BALKRISIND',qty:10,avg:2086.29,ltp:2148.30,cur:'INR',exch:'NSE (India)'},
-    {sym:'COALINDIA',qty:100,avg:443.85,ltp:462.20,cur:'INR',exch:'NSE (India)'},
-    {sym:'HDFCBANK',qty:80,avg:784.01,ltp:767.50,cur:'INR',exch:'NSE (India)'},
-    {sym:'IOC',qty:150,avg:142.15,ltp:134.48,cur:'INR',exch:'NSE (India)'},
-    {sym:'ITC',qty:75,avg:303.33,ltp:309.45,cur:'INR',exch:'NSE (India)'},
-    {sym:'JYOTHYLAB',qty:150,avg:250.64,ltp:219.30,cur:'INR',exch:'NSE (India)'},
-    {sym:'RELIANCE',qty:20,avg:1350.71,ltp:1336.40,cur:'INR',exch:'NSE (India)'},
-    {sym:'SUNPHARMA',qty:20,avg:1722.22,ltp:1878.20,cur:'INR',exch:'NSE (India)'},
-    {sym:'THERMAX',qty:15,avg:3745.07,ltp:4500.40,cur:'INR',exch:'NSE (India)'},
-    {sym:'VBL',qty:30,avg:432.08,ltp:503.80,cur:'INR',exch:'NSE (India)'}
-  ];
-  D.mf=[
-    {name:'HDFC NIFTY Next50 Index Fund',amc:'HDFC',type:'Index',country:'India',inv:270000,val:359672,xirr:null,sip:5000,cur:'INR'},
-    {name:'HDFC Large Cap Fund',amc:'HDFC',type:'Equity',country:'India',inv:14000,val:13356,xirr:null,sip:2000,cur:'INR'},
-    {name:'HDFC Large & Mid Cap Fund',amc:'HDFC',type:'Equity',country:'India',inv:7000,val:6841,xirr:null,sip:1000,cur:'INR'},
-    {name:'HDFC Mid Cap Fund',amc:'HDFC',type:'Equity',country:'India',inv:7000,val:6946,xirr:null,sip:1000,cur:'INR'},
-    {name:'HDFC Small Cap Fund',amc:'HDFC',type:'Equity',country:'India',inv:7000,val:6875,xirr:null,sip:1000,cur:'INR'},
-    {name:'Axis NIFTY 50 Index Fund (SIP)',amc:'Axis',type:'Index',country:'India',inv:260000,val:301000,xirr:6.9,sip:0,cur:'INR'},
-    {name:'Axis NIFTY500 Value 50 Index Fund',amc:'Axis',type:'Index',country:'India',inv:200000,val:235000,xirr:10.9,sip:0,cur:'INR'},
-    {name:'Axis Ultra Short Duration Fund',amc:'Axis',type:'Debt',country:'India',inv:50000,val:54405,xirr:7.1,sip:0,cur:'INR'},
-    {name:'Axis Gold Fund',amc:'Axis',type:'Gold/Silver',country:'India',inv:35000,val:38118,xirr:37.8,sip:0,cur:'INR'},
-    {name:'Axis NIFTY 50 Index Fund (Lumpsum)',amc:'Axis',type:'Index',country:'India',inv:25000,val:35943,xirr:8.8,sip:0,cur:'INR'},
-    {name:'Axis Silver Fund of Fund',amc:'Axis',type:'Gold/Silver',country:'India',inv:20000,val:24861,xirr:104.7,sip:2500,cur:'INR'},
-    {name:'SBI Multicap Fund - Regular',amc:'SBI',type:'Equity',country:'India',inv:105000,val:138859,xirr:11.29,sip:0,cur:'INR'},
-    {name:'SBI Automotive Opportunities Fund',amc:'SBI',type:'Equity',country:'India',inv:100000,val:113306,xirr:6.61,sip:0,cur:'INR'},
-    {name:'SBI Gold Fund',amc:'SBI',type:'Gold/Silver',country:'India',inv:25000,val:28263,xirr:51.16,sip:5000,cur:'INR'},
-    {name:'SBI Multicap Fund - Direct',amc:'SBI',type:'Equity',country:'India',inv:70000,val:71263,xirr:6.02,sip:5000,cur:'INR'},
-    {name:'SBI Silver ETF Fund of Fund',amc:'SBI',type:'Gold/Silver',country:'India',inv:10000,val:10318,xirr:24.04,sip:2500,cur:'INR'},
-    {name:'SBI Innovative Opportunities Fund',amc:'SBI',type:'Equity',country:'India',inv:7500,val:7603,xirr:14.06,sip:2500,cur:'INR'},
-    {name:'SBI Contra Fund',amc:'SBI',type:'Equity',country:'India',inv:60860,val:60759,xirr:-0.99,sip:0,cur:'INR'},
-    {name:'SBI Nifty200 Momentum 30 Index Fund',amc:'SBI',type:'Index',country:'India',inv:40000,val:39321,xirr:-3.63,sip:5000,cur:'INR'}
-  ];
-  D.crypto=[];
-  D.otherInv=[
-    {
-      name:'Land — 2.25 Cent Plot',
-      type:'Real Estate',
-      inv:2925000,
-      val:2925000,
-      cur:'INR',
-      note:'2.25 cent · ₹13L per cent · Kerala, India'
-    },
-    {
-      name:'Land — 14.5 Cent Plot',
-      type:'Real Estate',
-      inv:21750000,
-      val:21750000,
-      cur:'INR',
-      note:'14.5 cent · ₹15L per cent · Kerala, India'
-    }
-  ];
-  D.banks=[
-    {name:'Dubai Islamic Bank (DIB)',type:'Current',bal:14758.48,rate:0,cur:'AED',acno:'135301',country:'UAE'},
-    {name:'HDFC Bank — NRE Savings',type:'NRE Savings',bal:115040.72,rate:3.5,cur:'INR',acno:'1416',country:'India'},
-    {name:'HDFC Bank — NRO Savings',type:'NRO Savings',bal:8551.71,rate:3.5,cur:'INR',acno:'6664',country:'India'},
-    {name:'SBI — NRE Savings',type:'NRE Savings',bal:109541.09,rate:2.5,cur:'INR',acno:'0797',country:'India'},
-    {name:'SBI — NRO Savings',type:'NRO Savings',bal:4123.25,rate:2.5,cur:'INR',acno:'9204',country:'India'}
-  ];
-  D.fds=[
-    {bank:'HDFC Bank',dtype:'NRE-RD',prin:120000,rate:6.25,start:'2025-06-12',matdate:'2026-06-12',matamt:124116,cur:'INR',note:'A/C: 5040 0364 1242 04 · Tax-free interest'}
-  ];
-  D.loans=[
-    {type:'Personal Finance (Sukuk)',bank:'Dubai Islamic Bank',bal:182263,rate:0,emi:5360.67,rem:34,cur:'AED',country:'UAE',start:'2025-01-16',due:'2026-05-27',note:'Ref: 001M067250200041'},
-    {type:'Car Loan (Auto Murabaha)',bank:'Dubai Islamic Bank',bal:80105.50,rate:0,emi:1953.80,rem:41,cur:'AED',country:'UAE',start:'2024-08-21',due:'2026-05-29',note:'Ref: 007M041242600014'}
-  ];
-  D.cards=[
-    {name:'DIB Visa Credit Card (ending 9747)',limit:5000,due:0,min:0,duedate:'',rate:0,cur:'AED',country:'UAE'},
-    {name:'Emirates Islamic — RTA Platinum',limit:6000,due:4092.89,min:0,duedate:'',rate:0,cur:'AED',country:'UAE'}
-  ];
-  D.settings={baseCur:'INR'};
-}
-
-function loadData() {
-  if(!WW.isLoggedIn()){window.location.href='login.html';return;}
+async function loadData() {
+  if (!WW.isLoggedIn()) { window.location.href='login.html'; return; }
   CURRENT_USER=WW.getSession();
   document.getElementById('topbar-user').textContent=CURRENT_USER.name;
-  try{
-    const raw=WW.getUserData(CURRENT_USER.id);
-    if(raw){
-      D=raw;
-      if(!D.stocks||D.stocks.length===0){
-        const users=WW.getUsers();
-        const me=users.find(u=>u.id===CURRENT_USER.id);
-        if(me&&me.isAdmin)defaultData();
-      }
-      if(!D.crypto)D.crypto=[];
-      if(!D.otherInv)D.otherInv=[];
-      if(!D.settings)D.settings={baseCur:'INR'};
-    } else {
-      const users=WW.getUsers();
-      const me=users.find(u=>u.id===CURRENT_USER.id);
-      if(me&&me.isAdmin)defaultData();
-    }
-  }catch(e){console.error(e);}
-  BASE_CUR=D.settings?.baseCur||'INR';
-  document.getElementById('base-cur').value=BASE_CUR;
-  document.getElementById('set-cur').value=BASE_CUR;
-  document.getElementById('d-cur-lbl').textContent=BASE_CUR;
-  saveData();
-  fetchRates().then(()=>renderAll());
+  try {
+    D=await WW.loadProfile();
+    BASE_CUR=D.settings?.baseCur||'INR';
+    document.getElementById('base-cur').value=BASE_CUR;
+    document.getElementById('set-cur').value=BASE_CUR;
+    document.getElementById('d-cur-lbl').textContent=BASE_CUR;
+    renderAll();
+    WW.status('Connected to your database');
+    fetchRates().then(()=>renderAll());
+  } catch(error) {
+    WW.status(error.message, true);
+  }
 }
 
 function parseGeojitTable(text) {
@@ -697,7 +609,7 @@ function parseGeojitTable(text) {
   return { positions, total };
 }
 
-function importGeojit() {
+async function importGeojit() {
   const input = document.getElementById('geojit-table');
   const status = document.getElementById('geojit-status');
   try {
@@ -715,7 +627,7 @@ function importGeojit() {
     if (!confirm('Save ' + count + ' holdings totaling ₹' + total.toLocaleString('en-IN') +
       '? ' + positions.size + ' new holdings will be added. Unmatched entries will be kept.')) return;
     if (!CURRENT_USER) throw new Error('Sign in before importing.');
-    WW.saveUserData(CURRENT_USER.id, { ...D, stocks: next });
+    await WW.saveUserData(CURRENT_USER.id, { ...D, stocks: next });
     D.stocks = next;
     renderAll();
     input.value = '';
@@ -729,7 +641,7 @@ function importGeojit() {
 function saveData(){
   if(!CURRENT_USER)return;
   if(D.settings)D.settings.baseCur=BASE_CUR;
-  try{WW.saveUserData(CURRENT_USER.id,D);}catch(e){}
+  WW.saveUserData(CURRENT_USER.id,D).catch(()=>{});
 }
 
 // ═══════════════════════════════════════════
@@ -1242,8 +1154,9 @@ function goTo(page){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   const map={dashboard:0,report:1,stocks:2,mf:3,crypto:4,'other-inv':5,bank:6,loans:7,cards:8,sip:9,insights:10,settings:11};
-  const idx=map[page];
-  if(idx!==undefined)document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(button => {
+    if (button.getAttribute('onclick') === "goTo('" + page + "')") button.classList.add('active');
+  });
   if(page==='report')renderReport();
 }
 
