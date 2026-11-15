@@ -1,116 +1,109 @@
-// WealthWise Auth System v2
-// Supports email/password + Google OAuth
-// Data stored in localStorage per user
-
+// Verified Supabase accounts and per-account cloud profiles.
 const WW = {
-
-  // ── Session ──
+  url: 'https://rblslvckvcanqrpdstix.supabase.co',
+  key: 'sb_publishable_Z5oSDw7-gn-jeUHGS4tZUA_1gKKd0Ae',
+  revision: null,
+  saveChain: Promise.resolve(),
+  refreshFlight: null,
   getSession() {
-    try { return JSON.parse(localStorage.getItem('ww_session')); } catch(e) { return null; }
+    try {
+      const session = JSON.parse(localStorage.getItem('ww_verified_session'));
+      if (!session?.access_token || !session?.user?.id) return null;
+      return { ...session, id: session.user.id, email: session.user.email,
+        name: session.user.user_metadata?.full_name || session.user.email };
+    } catch { return null; }
   },
-  setSession(user) {
-    localStorage.setItem('ww_session', JSON.stringify({
-      id: user.id, name: user.name, email: user.email,
-      picture: user.picture||null, loginMethod: user.loginMethod||'email',
-      ts: Date.now()
-    }));
+  setSession(session) { localStorage.setItem('ww_verified_session', JSON.stringify(session)); },
+  clearSession() { localStorage.removeItem('ww_verified_session'); },
+  isLoggedIn() { return Boolean(this.getSession()); },
+  getUsers() { return []; },
+  getUserDataKey(id) { return 'ww_verified_data_' + id; },
+  getUserData(id) {
+    try { return JSON.parse(localStorage.getItem(this.getUserDataKey(id))); } catch { return null; }
   },
-  clearSession() { localStorage.removeItem('ww_session'); },
-  isLoggedIn() {
-    const s = this.getSession();
-    if (!s) return false;
-    if (Date.now() - s.ts > 7 * 24 * 3600 * 1000) { this.clearSession(); return false; }
-    return true;
-  },
-
-  // ── Users ──
-  getUsers() {
-    try { return JSON.parse(localStorage.getItem('ww_users')) || []; } catch(e) { return []; }
-  },
-  saveUsers(users) { localStorage.setItem('ww_users', JSON.stringify(users)); },
-  findUser(email) {
-    return this.getUsers().find(u => u.email.toLowerCase() === email.toLowerCase());
-  },
-  findUserById(id) { return this.getUsers().find(u => u.id === id); },
-
-  // ── Password hash (simple, client-side only) ──
-  hashPassword(pwd) {
-    let hash = 0;
-    const str = pwd + 'wealthwise_salt_2026';
-    for (let i = 0; i < str.length; i++) {
-      const c = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + c;
-      hash = hash & hash;
+  status(message, failed = false) {
+    let el = document.getElementById('cloud-status');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'cloud-status'; el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;padding:10px 14px;background:#fff;border:1px solid #aaa;border-radius:8px;max-width:400px';
+      document.body.append(el);
     }
-    return Math.abs(hash).toString(36);
+    el.textContent = message; el.style.color = failed ? '#b91c1c' : '#166534';
   },
-
-  // ── Register (email/password) ──
-  register(name, email, password) {
-    if (!name || !email || !password) return {ok:false, msg:'All fields are required.'};
-    if (password.length < 6) return {ok:false, msg:'Password must be at least 6 characters.'};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return {ok:false, msg:'Please enter a valid email address.'};
-    if (this.findUser(email)) return {ok:false, msg:'An account with this email already exists. Please sign in.'};
-    const users = this.getUsers();
-    const user = {
-      id: 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-      name: name.trim(), email: email.trim().toLowerCase(),
-      password: this.hashPassword(password),
-      createdAt: new Date().toISOString(),
-      isAdmin: users.length === 0,
-      loginMethod: 'email'
-    };
-    users.push(user);
-    this.saveUsers(users);
-    this.setSession(user);
-    return {ok:true, user};
+  async token() {
+    const session = this.getSession();
+    if (!session) throw new Error('Sign in to save your portfolio.');
+    if (session.expires_at * 1000 > Date.now() + 60000) return session.access_token;
+    if (!this.refreshFlight) this.refreshFlight = this.authRequest('/token?grant_type=refresh_token',
+      { refresh_token: session.refresh_token }).then(next => {
+        if (this.getSession()?.id !== session.id) throw new Error('Your account changed. Reload the page.');
+        this.setSession(next); return next.access_token;
+      }).finally(() => { this.refreshFlight = null; });
+    return this.refreshFlight;
   },
-
-  // ── Login (email/password) ──
-  login(email, password) {
-    if (!email || !password) return {ok:false, msg:'Email and password are required.'};
-    const user = this.findUser(email);
-    if (!user) return {ok:false, msg:'No account found with this email.'};
-    if (user.loginMethod === 'google') return {ok:false, msg:'This account uses Google Sign-In. Please use the Google button above.'};
-    if (user.password !== this.hashPassword(password)) return {ok:false, msg:'Incorrect password. Please try again.'};
-    this.setSession(user);
-    return {ok:true, user};
+  async authRequest(path, body) {
+    const response = await fetch(this.url + '/auth/v1' + path, {
+      method:'POST', headers:{ apikey:this.key, 'Content-Type':'application/json' },
+      body:JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.msg || result.error_description || result.message || 'Sign-in failed.');
+    return result;
   },
-
-  // ── Google login / register ──
-  googleLogin(googleUser) {
-    const { id, name, email, picture, sub } = googleUser;
-    let user = this.findUser(email);
-    if (!user) {
-      const users = this.getUsers();
-      user = {
-        id: 'g_' + (sub || id || Date.now()),
-        name, email: email.toLowerCase(),
-        password: null,
-        createdAt: new Date().toISOString(),
-        isAdmin: users.length === 0,
-        picture, loginMethod: 'google', googleId: sub||id
-      };
-      users.push(user);
-      this.saveUsers(users);
-    }
-    this.setSession(user);
-    return {ok:true, user};
+  async login(email, password) {
+    const session = await this.authRequest('/token?grant_type=password', {email,password});
+    this.setSession(session); return this.getSession();
   },
-
-  // ── Per-user data ──
-  getUserDataKey(userId) { return 'ww_data_' + userId; },
-  getUserData(userId) {
-    try { return JSON.parse(localStorage.getItem(this.getUserDataKey(userId))); } catch(e) { return null; }
+  async register(name,email,password) {
+    const result = await this.authRequest('/signup', {email,password,data:{full_name:name}});
+    if (result.access_token) this.setSession(result);
+    return result;
   },
-  saveUserData(userId, data) {
-    localStorage.setItem(this.getUserDataKey(userId), JSON.stringify(data));
+  async rpc(name, body = {}) {
+    const token = await this.token();
+    const response = await fetch(this.url + '/rest/v1/rpc/' + name, {
+      method:'POST', headers:{apikey:this.key,Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Cloud connection failed.');
+    return result;
   },
-
-  // ── Logout ──
-  logout() { this.clearSession(); window.location.href = 'login.html'; }
+  async loadProfile() {
+    const id = this.getSession()?.id;
+    const profile = await this.rpc('wealthwise_load_profile');
+    if (this.getSession()?.id !== id) throw new Error('Your account changed. Reload the page.');
+    this.revision = profile.revision;
+    localStorage.setItem(this.getUserDataKey(id), JSON.stringify(profile.data));
+    return profile.data;
+  },
+  saveUserData(id, data) {
+    if (id !== this.getSession()?.id) throw new Error('The signed-in account changed.');
+    const snapshot = JSON.parse(JSON.stringify(data));
+    const write = this.saveChain.then(async () => {
+      if (id !== this.getSession()?.id) throw new Error('The signed-in account changed.');
+      if (this.revision === null) throw new Error('Reload to reconnect before saving.');
+      this.status('Saving to your database…');
+      try {
+        this.revision = await this.rpc('wealthwise_save_profile', {profile_data:snapshot,expected_revision:this.revision});
+        localStorage.setItem(this.getUserDataKey(id), JSON.stringify(snapshot));
+        this.status('Saved to your database');
+      } catch (error) {
+        this.revision = null;
+        throw error;
+      }
+    });
+    this.saveChain = write.catch(error => this.status(error.message, true));
+    return write;
+  },
+  async apiRequestLegacy(options) { return this.api(JSON.parse(options.body)); },
+  async api(body) {
+    return fetch('/api/wealthwise-assistant', {method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+await this.token()},
+      body:JSON.stringify(body)});
+  },
+  logout() { this.clearSession(); window.location.href='login.html'; }
 };
-
 (function installWealthWiseAssistant(){
   if (!/app\.html?$/.test(window.location.pathname)) return;
 
@@ -166,18 +159,10 @@ const WW = {
       main.insertAdjacentHTML('beforeend', html);
     }
     patchNavigation();
-    recoverLocalWealthWiseData();
-    applyGeojitStatementSnapshot();
+
+
     renderAi();
-    syncWealthWiseData('read').then(j => {
-      if (j && j.data && typeof D !== 'undefined' && dataScore(j.data) > dataScore(D)) {
-        Object.keys(D).forEach(k => delete D[k]);
-        Object.assign(D, j.data);
-        ensureAiDataShape();
-        try { WW.saveUserData(WW.getSession().id, D); } catch(e) {}
-        if (typeof renderAll === 'function') renderAll();
-      }
-    }).catch(() => {});
+
   });
 
   let AI_MESSAGES = [];
@@ -206,41 +191,6 @@ const WW = {
     if (!D.settings) D.settings = { baseCur: 'INR' };
   }
 
-  function dataScore(data){
-    if (!data || typeof data !== 'object') return 0;
-    return ['stocks','mf','crypto','otherInv','banks','fds','loans','cards','expenses']
-      .reduce((sum, key) => sum + (Array.isArray(data[key]) ? data[key].length : 0), 0);
-  }
-
-  function recoverLocalWealthWiseData(){
-    if (typeof D === 'undefined') return;
-    ensureAiDataShape();
-    if (dataScore(D) > 0) return;
-    const user = WW.getSession();
-    if (!user) return;
-    let best = null;
-    let bestScore = 0;
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key || !key.startsWith('ww_data_')) continue;
-        const candidate = JSON.parse(localStorage.getItem(key) || 'null');
-        const score = dataScore(candidate);
-        if (score > bestScore) {
-          best = candidate;
-          bestScore = score;
-        }
-      }
-      if (best && bestScore > 0) {
-        Object.keys(D).forEach(k => delete D[k]);
-        Object.assign(D, best);
-        ensureAiDataShape();
-        WW.saveUserData(user.id, D);
-        if (typeof renderAll === 'function') renderAll();
-      }
-    } catch(e) {}
-  }
-
   function aiPortfolioContext(){
     ensureAiDataShape();
     return {
@@ -252,54 +202,6 @@ const WW = {
       expenses: D.expenses || [],
       liabilities: { loans: D.loans || [], cards: D.cards || [] }
     };
-  }
-
-  function applyGeojitStatementSnapshot(){
-    if (typeof D === 'undefined') return;
-    ensureAiDataShape();
-    const snapshotId = 'geojit-2026-09-19-14-holdings';
-    if (D.settings?.lastStockSnapshot === snapshotId) return;
-    const geojitStocks = [
-      {sym:'ASHOKLEY',name:'ASHOK LEYLAND LIMITED EQ NEW FV RE.1/-',isin:'INE208A01029',qty:250,ltp:163.00,value:40750.00},
-      {sym:'BAJFINANCE',name:'BAJAJ FINANCE LIMITED EQ NEW FV RE.1/-',isin:'INE296A01032',qty:90,ltp:1040.30,value:93627.00},
-      {sym:'BALKRISIND',name:'BALKRISHNA INDUSTRIES LIMITED EQ NEW F.V RS.2/-',isin:'INE787D01026',qty:25,ltp:2265.30,value:56632.50},
-      {sym:'COALINDIA',name:'COAL INDIA LTD EQ',isin:'INE522F01014',qty:150,ltp:409.90,value:61485.00},
-      {sym:'HDFCBANK',name:'HDFC BANK LIMITED EQ NEW FV RE. 1/-',isin:'INE040A01034',qty:100,ltp:731.00,value:73100.00},
-      {sym:'IOC',name:'INDIAN OIL CORPORATION LIMITED EQ',isin:'INE242A01010',qty:200,ltp:137.00,value:27400.00},
-      {sym:'ITC',name:'ITC LIMITED EQ NEW FV RE.1/-',isin:'INE154A01025',qty:200,ltp:262.30,value:52460.00},
-      {sym:'JYOTHYLAB',name:'JYOTHY LABS LIMITED EQ NEW RE. 1/-',isin:'INE668F01031',qty:260,ltp:195.07,value:50718.20},
-      {sym:'M&M',name:'MAHINDRA AND MAHINDRA LIMITED EQ NEW F.V. RS.5',isin:'INE101A01026',qty:15,ltp:3052.00,value:45780.00},
-      {sym:'POWERGRID',name:'POWER GRID CORPORATION OF INDIA LIMITED EQ',isin:'INE752E01010',qty:50,ltp:270.30,value:13515.00},
-      {sym:'RELIANCE',name:'RELIANCE INDUSTRIES LIMITED EQ',isin:'INE002A01018',qty:50,ltp:1226.40,value:61320.00},
-      {sym:'SUNPHARMA',name:'SUN PHARMACEUTICAL INDUSTRIES LIMITED EQ NEW F.V. RE.1/-',isin:'INE044A01036',qty:30,ltp:1837.30,value:55119.00},
-      {sym:'THERMAX',name:'THERMAX LIMITED EQ NEW FV RS.2/-',isin:'INE152A01029',qty:15,ltp:3551.90,value:53278.50},
-      {sym:'TIMKEN',name:'TIMKEN INDIA LIMITED EQ',isin:'INE325A01013',qty:15,ltp:3124.20,value:46863.00}
-    ];
-    const existing = Array.isArray(D.stocks) ? D.stocks : [];
-    const bySymbol = new Map(existing.map(stock => [String(stock.sym || '').toUpperCase(), stock]));
-    D.stocks = geojitStocks.map(stock => {
-      const old = bySymbol.get(stock.sym);
-      return {
-        sym: stock.sym,
-        name: stock.name,
-        isin: stock.isin,
-        qty: stock.qty,
-        avg: Number(old?.avg) || stock.ltp,
-        ltp: stock.ltp,
-        cur: 'INR',
-        exch: 'NSE (India)',
-        note: 'Updated from Geojit DP statement dated 19 Sep 2026',
-        statementValue: stock.value
-      };
-    });
-    D.settings = D.settings || {};
-    D.settings.lastStockSnapshot = snapshotId;
-    try {
-      const user = WW.getSession();
-      if (user) WW.saveUserData(user.id, D);
-    } catch(e) {}
-    if (typeof renderAll === 'function') renderAll();
-    syncWealthWiseData('write').catch(() => {});
   }
 
   function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
@@ -334,13 +236,9 @@ const WW = {
     el.innerHTML = AI_PENDING.map((p, i) => `<div class="ai-review-row"><div><strong>${escapeHtml(p.type)}</strong>${p.confidence ? ` <span class="badge b-info">${Math.round(p.confidence * 100)}%</span>` : ''}</div><textarea id="ai-pending-${i}">${escapeHtml(JSON.stringify(p.record, null, 2))}</textarea><div class="mact"><button class="btn-cancel" onclick="cancelAiPending(${i})">Cancel</button><button class="btn-save" onclick="confirmAiPending(${i})">Confirm save</button></div></div>`).join('');
   }
 
-  async function syncWealthWiseData(mode){
-    const user = WW.getSession();
-    if (!user) return null;
-    try {
-      const r = await fetch('/api/wealthwise-assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'sync', mode, user:{ id:user.id, email:user.email, name:user.name }, data: typeof D !== 'undefined' ? D : {} }) });
-      return r.ok ? await r.json() : null;
-    } catch(e) { return null; }
+  async function syncWealthWiseData(mode) {
+    if (mode === 'write' && typeof D !== 'undefined') return WW.saveUserData(WW.getSession().id,D);
+    return null;
   }
 
   window.askAiQuick = function(text){ document.getElementById('ai-input').value = text; window.sendAiMessage(); };
@@ -353,7 +251,7 @@ const WW = {
     renderAi();
     setAiStatus('Thinking...');
     try {
-      const r = await fetch('/api/wealthwise-assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'chat', message:text, messages:AI_MESSAGES.slice(-8), context:aiPortfolioContext() }) });
+      const r = await WW.apiRequestLegacy({ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'chat', message:text, messages:AI_MESSAGES.slice(-8), context:aiPortfolioContext() }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Assistant request failed');
       AI_MESSAGES.push({role:'assistant', content:j.reply || 'Done.'});
@@ -371,7 +269,7 @@ const WW = {
     try {
       const image = await readImageAsDataUrl(file);
       setAiStatus('Extracting records...');
-      const r = await fetch('/api/wealthwise-assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'extract', importType:gv('ai-import-type') || 'auto', image, context:aiPortfolioContext() }) });
+      const r = await WW.apiRequestLegacy({ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'extract', importType:gv('ai-import-type') || 'auto', image, context:aiPortfolioContext() }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Extraction failed');
       AI_PENDING = (j.records || []).map((record, idx) => ({ id:'p_' + Date.now() + '_' + idx, type:record.type, record:normalizeAiRecord(record.type, record.data || record), confidence:record.confidence || null }));

@@ -149,47 +149,20 @@ async function handleExtract(body) {
   return json(parsed);
 }
 
-async function handleSync(body) {
-  const supabaseUrl = env("SUPABASE_URL");
-  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
-  const table = env("SUPABASE_WEALTHWISE_TABLE") || "wealthwise_profiles";
-  if (!supabaseUrl || !serviceKey) return json({ ok: false, skipped: "Supabase is not configured." });
-  const user = body.user || {};
-  if (!user.id) return json({ error: "Missing user id." }, 400);
-  const url = `${supabaseUrl.replace(/\/$/, "")}/rest/v1/${table}`;
-  const headers = {
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
-    "Content-Type": "application/json",
-  };
-  if (body.mode === "read") {
-    const r = await fetch(`${url}?user_id=eq.${encodeURIComponent(user.id)}&select=data`, { headers });
-    const rows = await r.json();
-    return json({ ok: r.ok, data: rows?.[0]?.data || null });
-  }
-  const payload = {
-    user_id: user.id,
-    email: user.email || null,
-    display_name: user.name || null,
-    data: body.data || {},
-    updated_at: new Date().toISOString(),
-  };
-  const r = await fetch(`${url}?on_conflict=user_id`, {
-    method: "POST",
-    headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify(payload),
-  });
-  return json({ ok: r.ok, status: r.status });
-}
-
 export default async (req) => {
   if (req.method === "OPTIONS") return json({ ok: true });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
   try {
+    const authorization = req.headers.get('Authorization') || '';
+    if (!authorization.startsWith('Bearer ')) return json({error:'Sign in required.'},401);
+    const verification = await fetch('https://rblslvckvcanqrpdstix.supabase.co/auth/v1/user',{
+      headers:{Authorization:authorization,apikey:"sb_publishable_Z5oSDw7-gn-jeUHGS4tZUA_1gKKd0Ae"}
+    });
+    if (!verification.ok) return json({error:'Sign in again.'},401);
     const body = await req.json();
     if (body.action === "chat") return await handleChat(body);
     if (body.action === "extract") return await handleExtract(body);
-    if (body.action === "sync") return await handleSync(body);
+    if (body.action === "sync") return json({error:"Use the authenticated profile connection."},410);
     return json({ error: "Unknown action." }, 400);
   } catch (error) {
     return json({ error: error.message || "Assistant failed." }, 500);
