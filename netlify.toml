@@ -1,2 +1,24 @@
+[build]
+  command = "node scripts/check.mjs && node --test tests/*.test.mjs"
+  publish = "public"
+[build.environment]
+  NODE_VERSION = "24"
+  PNPM_VERSION = "11.25.0"
+[[redirects]]
+  from = "/app.html"
+  to = "/"
+  status = 301
+[[redirects]]
+  from = "/login.html"
+  to = "/"
+  status = 301
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
