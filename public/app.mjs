@@ -75,7 +75,7 @@ $('#close-dialog').onclick=()=>$('#dialog').close();$('#account-button').onclick
 $('#currency').onchange=e=>{state.settings.currency=e.target.value;render();};window.addEventListener('hashchange',render);
 let installEvent;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;$('#install').hidden=false;});$('#install').onclick=async()=>{await installEvent?.prompt();$('#install').hidden=true;};
 async function boot(){
- try{config=await api('config');}catch{config={};}
+ try{const r=await fetch('/api/config');if(!r.ok)throw new Error('Configuration unavailable');config=await r.json();}catch{config={};}
  const hash=new URLSearchParams(location.hash.slice(1));
  if(hash.has('access_token')){const access_token=hash.get('access_token');const recovery=hash.get('type')==='recovery';history.replaceState({},'',location.pathname);try{const r=await fetch(config.supabaseUrl+'/auth/v1/user',{headers:{apikey:config.publishableKey,Authorization:'Bearer '+access_token}});if(!r.ok)throw new Error('Email link expired.');setSession({access_token,refresh_token:hash.get('refresh_token'),expires_at:Date.now()/1000+Number(hash.get('expires_in')||3600),user:await r.json()});if(recovery)modal('<h2>Set your new password</h2><form class="form" id="password-form"><label>New password</label><input name="password" type="password" minlength="10" autocomplete="new-password" required><div class="actions"><button class="primary">Update password</button></div></form>');}catch(err){notify(err.message);}}
  if(session){try{await loadCloud();}catch(err){notify(err.message);state=emptyState();mode='cloud';}}else state=sampleState();render();
