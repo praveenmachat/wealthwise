@@ -12,6 +12,14 @@
   from = "/login.html"
   to = "/"
   status = 301
+[[redirects]]
+  from = "/login"
+  to = "/"
+  status = 302
+[[redirects]]
+  from = "/app"
+  to = "/"
+  status = 302
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
