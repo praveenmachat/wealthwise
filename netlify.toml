@@ -1,3 +1,4 @@
+# Redeploy after configuring the new database connection.
 [build]
   command = "node scripts/check.mjs && node --test tests/*.test.mjs"
   publish = "public"
