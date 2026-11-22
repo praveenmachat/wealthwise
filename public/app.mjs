@@ -51,7 +51,20 @@ async function sendAssistant(text,image){if(mode==='preview')throw new Error('AI
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{
  if(b.dataset.page){location.hash=b.dataset.page;return;}if(b.dataset.filter){assetFilter=b.dataset.filter;render();return;}if(b.dataset.edit)return assetForm(b.dataset.edit);if(b.dataset.txEdit)return txForm('expense',b.dataset.txEdit);
  if(b.dataset.archive){await save({action:'asset.archive',id:b.dataset.archive});$('#dialog').close();return;}
- if(b.dataset.approve||b.dataset.reject){const id=b.dataset.approve||b.dataset.reject;if(mode==='preview'){if(b.dataset.approve)state=applyProposal(state,id,{id:uid(),now:new Date().toISOString()});else state.proposals.find(p=>p.id===id).status='dismissed';}else{const r=await api('workspace',{decision:b.dataset.approve?'approve':'dismiss',proposalId:id,revision,requestId:uid()});state=r.data;revision=r.revision;}render();return;}
+ if(b.dataset.approve||b.dataset.reject){
+  if(busy)return;
+  busy=true;const label=b.textContent;
+  const controls=[...document.querySelectorAll('[data-approve],[data-reject]')];
+  controls.forEach(control=>control.disabled=true);
+  b.textContent=b.dataset.approve?'Saving…':'Dismissing…';b.setAttribute('aria-busy','true');
+  try{
+   const id=b.dataset.approve||b.dataset.reject;
+   if(mode==='preview'){if(b.dataset.approve)state=applyProposal(state,id,{id:uid(),now:new Date().toISOString()});else state.proposals.find(p=>p.id===id).status='dismissed';}
+   else{const r=await api('workspace',{decision:b.dataset.approve?'approve':'dismiss',proposalId:id,revision,requestId:uid()});state=r.data;revision=r.revision;}
+   render();notify(mode==='preview'?'Updated in preview only.':b.dataset.approve?'Update saved to your account.':'Update dismissed.');
+  }finally{busy=false;controls.forEach(control=>control.disabled=false);b.textContent=label;b.removeAttribute('aria-busy');}
+  return;
+ }
  if(b.dataset.prompt){$('#chat-form textarea').value=b.dataset.prompt;$('#chat-form textarea').focus();return;}
  const action=b.dataset.act;if(action==='asset')assetForm();if(action==='expense'||action==='income')txForm(action);if(action==='receipt')receiptForm();if(action==='account')accountForm();
  if(action==='sip')modal(`<h2>Give your goal a rhythm.</h2><form class="form" id="sip-form"><label>Plan name</label><input name="name" required><label>Mutual fund</label><select name="assetId" required><option value="">Choose a fund</option>${options(state.assets.filter(a=>a.type==='fund'&&!a.archived).map(a=>[a.id,a.name]))}</select><label>Monthly contribution</label><input name="amount" type="number" min=".01" step=".01" required><label>Currency</label><select name="currency">${options(CURRENCIES,state.settings.currency)}</select><label>Debit day (1–28)</label><input name="day" type="number" min="1" max="28" required><div class="actions"><button class="primary">Save SIP plan</button></div></form>`);
