@@ -35,3 +35,7 @@ This is an initial implementation, not a fully validated public financial servic
 ## Validation
 
 `node --test tests/*.test.mjs` covers minor-unit arithmetic, multicurrency net worth, insurance and SIP accounting, transfer exclusion, transaction deduplication, request idempotency, stale proposals, valid dates, authenticated/mapped statement imports, ciphertext tampering/account binding, unauthorized requests and database conflict handling. Browser preview was checked on desktop and at 390px width, including saving a sample expense.
+
+## Production Gmail configuration
+
+The production OAuth callback is `https://wealthwisemsp.netlify.app/api/gmail/callback`. Google client credentials and token encryption are configured in Netlify's production environment, not in this repository. Gmail remains in Google testing mode until test-user authorization and public verification are completed.
