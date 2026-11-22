@@ -14,7 +14,22 @@ function label(s){s=String(s||'').trim();if(!s||s.length>160)fail('A name of 1â€
 function currency(c){if(!CURRENCIES.includes(c))fail('Select a supported currency.');return c;}
 export function asset(input,id){
  if(!TYPES[input.type])fail('Select an asset or liability type.');
- return {id,type:input.type,name:label(input.name),amount:money(input.amount),currency:currency(input.currency),asOf:validDate(input.asOf),institution:String(input.institution||'').slice(0,120),accountRef:String(input.accountRef||'').slice(0,80),coverage:input.type==='insurance'?money(input.coverage||0):0,notes:String(input.notes||'').slice(0,1000),archived:false};
+ const loan=input.type==='loan'?loanSchedule(input):{};
+ return {id,type:input.type,name:label(input.name),amount:money(input.amount),currency:currency(input.currency),asOf:validDate(input.asOf),institution:String(input.institution||'').slice(0,120),accountRef:String(input.accountRef||'').slice(0,80),coverage:input.type==='insurance'?money(input.coverage||0):0,notes:String(input.notes||'').slice(0,1000),archived:false,...loan};
+}
+function loanSchedule(input){
+ const remainingMonths=input.remainingMonths==null||input.remainingMonths===''?null:Number(input.remainingMonths);
+ if(remainingMonths!==null&&(!Number.isInteger(remainingMonths)||remainingMonths<0||remainingMonths>1200))fail('Enter remaining tenure in whole months.');
+ const installmentAmount=input.installmentAmount==null||input.installmentAmount===''?null:money(input.installmentAmount);
+ const nextInstallmentDate=input.nextInstallmentDate?validDate(input.nextInstallmentDate):null;
+ if(nextInstallmentDate&&(!installmentAmount||!remainingMonths))fail('Enter a positive installment amount and remaining tenure.');
+ return {remainingMonths,installmentAmount,nextInstallmentDate};
+}
+export function localDate(now,timezone='Asia/Dubai'){return new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));}
+export function dueLoans(state,now=new Date().toISOString()){const date=localDate(now,state.settings.timezone);return state.assets.filter(a=>!a.archived&&a.type==='loan'&&a.nextInstallmentDate&&a.nextInstallmentDate<=date&&a.remainingMonths>0);}
+function nextMonth(date,anchor){
+ const d=new Date(date+'T12:00:00Z'),year=d.getUTCFullYear(),month=d.getUTCMonth()+1;
+ return new Date(Date.UTC(year,month,Math.min(anchor,new Date(Date.UTC(year,month+1,0)).getUTCDate()),12)).toISOString().slice(0,10);
 }
 export function transaction(input,id){
  if(!['expense','income','transfer'].includes(input.kind))fail('Select expense, income or transfer.');
@@ -35,8 +50,27 @@ export function mutate(current,command,meta){
  let before=null,after=null;
  if(command.action==='asset.save'){
    const prior=s.assets.find(a=>a.id===command.id);if(command.id&&!prior)fail('Asset not found.');
-   after=asset(command.data,prior?.id||id);before=prior||null;
+   const data={...command.data};
+   if(prior?.type==='loan'&&data.type==='loan')for(const key of ['remainingMonths','nextInstallmentDate','installmentAmount'])if(data[key]===undefined)data[key]=key==='installmentAmount'&&prior[key]!=null?(prior[key]/100).toFixed(2):prior[key];
+   after=asset(data,prior?.id||id);before=prior||null;
+   if(prior?.type==='loan'&&after.type==='loan'){after.installmentHistory=prior.installmentHistory||[];after.installmentStatus=prior.installmentStatus||null;after.installmentDay=after.nextInstallmentDate===prior.nextInstallmentDate?prior.installmentDay:Number(after.nextInstallmentDate?.slice(-2))||null;}
    if(prior)s.assets[s.assets.indexOf(prior)]=after;else s.assets.push(after);
+ }else if(command.action==='loan.confirm'){
+   const prior=s.assets.find(a=>a.id===command.id&&a.type==='loan'&&!a.archived);
+   if(!prior||!dueLoans(s,now).some(a=>a.id===prior.id)||command.data.dueDate!==prior.nextInstallmentDate)fail('This installment is not due or has already been updated.');
+   if(!['paid','unpaid'].includes(command.data.status))fail('Choose paid or not paid.');
+   before=structuredClone(prior);
+   const paid=command.data.status==='paid',date=localDate(now,s.settings.timezone);
+   after={...prior,installmentStatus:paid?null:'unpaid',installmentHistory:[...(prior.installmentHistory||[]),{dueDate:prior.nextInstallmentDate,status:command.data.status,checkedAt:now,amount:prior.installmentAmount}]};
+   if(paid){
+     const paymentDate=validDate(command.data.paymentDate||date);if(paymentDate>date)fail('Payment date cannot be in the future.');
+     after.installmentHistory.at(-1).paymentDate=paymentDate;
+     after.remainingMonths=Math.max(0,prior.remainingMonths-1);
+     after.installmentDay=prior.installmentDay||Number(prior.nextInstallmentDate.slice(-2));
+     after.nextInstallmentDate=after.remainingMonths?nextMonth(prior.nextInstallmentDate,after.installmentDay):null;
+     if(command.data.balance!==undefined&&command.data.balance!==''){after.amount=money(command.data.balance);after.asOf=paymentDate;}
+   }
+   s.assets[s.assets.indexOf(prior)]=after;
  }else if(command.action==='asset.archive'){
    const prior=s.assets.find(a=>a.id===command.id);if(!prior)fail('Asset not found.');before=structuredClone(prior);prior.archived=true;after=prior;
  }else if(command.action==='transaction.save'){
@@ -70,3 +104,4 @@ export function sampleState(){
  for(const [kind,name,amount,category]of [['income','Monthly salary','95000','Salary'],['expense','Fresh groceries','2450','Food'],['expense','Coffee with friends','480','Dining']])s=mutate(s,{action:'transaction.save',data:{kind,name,amount,category,currency:'INR',date:month+'-01'}},{id:'sample-'+name,now,source:'sample'});
  return s;
 }
+
