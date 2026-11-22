@@ -39,3 +39,5 @@ This is an initial implementation, not a fully validated public financial servic
 ## Production Gmail configuration
 
 The production OAuth callback is `https://wealthwisemsp.netlify.app/api/gmail/callback`. Google client credentials and token encryption are configured in Netlify's production environment, not in this repository. Gmail remains in Google testing mode until test-user authorization and public verification are completed.
+
+Production extraction selects `gpt-4.1-mini` through `OPENAI_MODEL`. The OpenAI SDK uses Netlify AI Gateway's runtime credentials; no provider secret is included in the browser. AI requests consume the team's existing Netlify credits. Model-generated financial changes remain proposals requiring review.
