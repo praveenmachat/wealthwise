@@ -28,3 +28,18 @@ export function verifiedGeojit(state,html,{sender,authenticated,messageId}){
  for(const old of mapped.filter(a=>!statement.holdings.some(h=>h.isin===a.accountRef))){next=mutate(next,{action:'asset.save',id:old.id,data:{...old,amount:'0',asOf:statement.asOf,notes:'Absent from complete statement '+messageId}},{id:createHash('sha256').update(messageId+':zero:'+old.id).digest('hex'),now,source:'gmail:verified-geojit'});}
  return {data:next,count:statement.holdings.length};
 }
+export function geojitProposals(state,html,messageId){
+ const statement=parseGeojit(html),institution='Geojit:'+statement.clientId;
+ const mapped=state.assets.filter(a=>!a.archived&&a.type==='stock'&&a.institution===institution);
+ if(mapped.some(a=>a.currency!=='INR'||a.asOf>statement.asOf))throw new Error('Statement is older than a recorded balance or has a different currency.');
+ const rows=statement.holdings.map(h=>({h,old:mapped.find(a=>a.accountRef===h.isin)}));
+ for(const old of mapped.filter(a=>!statement.holdings.some(h=>h.isin===a.accountRef)))rows.push({old,h:{isin:old.accountRef,name:old.name,qty:0,price:0,amount:0}});
+ return rows.map(({h,old})=>({
+   id:createHash('sha256').update(messageId+':review:'+h.isin).digest('hex'),status:'pending',
+   title:h.name,reason:'Statement rows and total reconcile. Confirm this account and holding.',
+   evidence:`${h.isin}: quantity ${h.qty} × INR ${(h.price/100).toFixed(2)} = INR ${(h.amount/100).toFixed(2)}. Statement total INR ${(statement.total/100).toFixed(2)}.`,
+   command:{action:'asset.save',...(old?{id:old.id}:{}),data:{type:'stock',name:h.name,amount:(h.amount/100).toFixed(2),currency:'INR',asOf:statement.asOf,institution,accountRef:h.isin,notes:`Quantity ${h.qty}; statement price ${(h.price/100).toFixed(2)}. Gmail source ${messageId}. Purchase cost unknown.`}},
+   source:'gmail',sourceId:messageId,createdAt:new Date().toISOString(),...(old?{before:old}:{})
+ }));
+}
+
