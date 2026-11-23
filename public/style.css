@@ -7,4 +7,5 @@
 .portfolio-summary{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--line)}.portfolio-summary>div{display:flex;flex-direction:column;gap:7px}.portfolio-summary strong{font-size:24px;color:var(--green)}.portfolio-summary small{font-size:11px;color:var(--muted)}
 
 .scan-feedback{padding:16px;margin:14px 0;border-radius:10px;line-height:1.6;font-size:14px}.scan-feedback strong{display:block;font-size:16px;margin-bottom:7px}.scan-feedback div+div{margin-top:10px;font-size:12px}.scan-warning{border:2px solid #b56816;background:#fff4df;color:#623600}.scan-warning:focus{outline:3px solid #bd7a28;outline-offset:3px}.scan-progress{border:1px solid #b9cfca;background:#edf6f2;color:#184e45}
+.form [hidden]{display:none!important}
 
