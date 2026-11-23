@@ -10,7 +10,11 @@ export default safe(async req=>{
  let next;
  try{
  if(b.decision){const p=row.data.proposals.find(p=>p.id===b.proposalId&&p.status==='pending');if(!p)throw error('Proposal is no longer pending.',409);
- if(b.decision==='approve')next=applyProposal(row.data,p.id,{id,now:new Date().toISOString()});
+ if(b.decision==='approve'){
+ let current=row.data;
+ if(b.data){if(p.command.action!=='asset.save')throw error('Only account proposals support edited approval.');current=structuredClone(row.data);current.proposals.find(x=>x.id===p.id).command={...p.command,data:b.data};}
+ next=applyProposal(current,p.id,{id,now:new Date().toISOString()});
+ }
  else if(b.decision==='revise'){
  if(p.command.action!=='asset.save'||!b.data)throw error('Only account proposals can be edited.');
  const command={...p.command,data:b.data};
