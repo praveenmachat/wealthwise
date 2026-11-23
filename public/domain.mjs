@@ -15,7 +15,8 @@ function currency(c){if(!CURRENCIES.includes(c))fail('Select a supported currenc
 export function asset(input,id){
  if(!TYPES[input.type])fail('Select an asset or liability type.');
  const loan=input.type==='loan'?loanSchedule(input):{};
- return {id,type:input.type,name:label(input.name),amount:money(input.amount),currency:currency(input.currency),asOf:validDate(input.asOf),institution:String(input.institution||'').slice(0,120),accountRef:String(input.accountRef||'').slice(0,80),coverage:input.type==='insurance'?money(input.coverage||0):0,notes:String(input.notes||'').slice(0,1000),archived:false,...loan};
+ const details={branch:String(input.branch||'').trim().slice(0,120),iban:String(input.iban||'').trim().slice(0,40)};
+ return {id,type:input.type,name:label(input.name),amount:money(input.amount),currency:currency(input.currency),asOf:validDate(input.asOf),institution:String(input.institution||'').slice(0,120),accountRef:String(input.accountRef||'').slice(0,80),coverage:input.type==='insurance'?money(input.coverage||0):0,notes:String(input.notes||'').slice(0,1000),archived:false,...loan,...details};
 }
 function loanSchedule(input){
  const remainingMonths=input.remainingMonths==null||input.remainingMonths===''?null:Number(input.remainingMonths);
@@ -51,6 +52,7 @@ export function mutate(current,command,meta){
  if(command.action==='asset.save'){
    const prior=s.assets.find(a=>a.id===command.id);if(command.id&&!prior)fail('Asset not found.');
    const data={...command.data};
+   for(const key of ['branch','iban'])if(prior&&data[key]===undefined)data[key]=prior[key];
    if(prior?.type==='loan'&&data.type==='loan')for(const key of ['remainingMonths','nextInstallmentDate','installmentAmount'])if(data[key]===undefined)data[key]=key==='installmentAmount'&&prior[key]!=null?(prior[key]/100).toFixed(2):prior[key];
    after=asset(data,prior?.id||id);before=prior||null;
    if(prior?.type==='loan'&&after.type==='loan'){after.installmentHistory=prior.installmentHistory||[];after.installmentStatus=prior.installmentStatus||null;after.installmentDay=after.nextInstallmentDate===prior.nextInstallmentDate?prior.installmentDay:Number(after.nextInstallmentDate?.slice(-2))||null;}

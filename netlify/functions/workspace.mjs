@@ -11,6 +11,13 @@ export default safe(async req=>{
  try{
  if(b.decision){const p=row.data.proposals.find(p=>p.id===b.proposalId&&p.status==='pending');if(!p)throw error('Proposal is no longer pending.',409);
  if(b.decision==='approve')next=applyProposal(row.data,p.id,{id,now:new Date().toISOString()});
+ else if(b.decision==='revise'){
+ if(p.command.action!=='asset.save'||!b.data)throw error('Only account proposals can be edited.');
+ const command={...p.command,data:b.data};
+ mutate(row.data,command,{id,now:new Date().toISOString()});
+ next=structuredClone(row.data);next.proposals.find(x=>x.id===p.id).command=command;
+ next.audit.unshift({id,at:new Date().toISOString(),action:'proposal.revise',source:'manual',before:p.command,after:command});
+ }
  else if(b.decision==='dismiss'){next=structuredClone(row.data);next.proposals.find(x=>x.id===p.id).status='dismissed';next.audit.unshift({id,at:new Date().toISOString(),action:'proposal.dismiss',source:'manual',before:p,after:null});}
  else throw error('Invalid review decision.');
  }else next=mutate(row.data,b.command,{id,now:new Date().toISOString()});
@@ -18,3 +25,4 @@ export default safe(async req=>{
  return json(await commit(user.id,next,row.revision));
 });
 export const config={path:'/api/workspace'};
+
