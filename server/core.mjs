@@ -4,7 +4,17 @@ export const env=k=>globalThis.Netlify?.env?.get(k)||process.env[k];
 export function required(k){const v=env(k);if(!v)throw Object.assign(new Error('This service is not configured yet. Please contact the app owner.'),{status:503});return v;}
 export const json=(data,status=200,headers={})=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
 export function error(message,status=400){return Object.assign(new Error(message),{status});}
-export async function body(req){const text=await req.text();if(text.length>5_700_000)throw error('The upload is too large.',413);try{return JSON.parse(text);}catch{throw error('Invalid request.');}}
+export async function body(req){
+ const maximum=5_700_000;
+ if(Number(req.headers.get('content-length'))>maximum)throw error('The upload is too large.',413);
+ if(!req.headers.get('content-type')?.toLowerCase().startsWith('application/json'))throw error('Send a JSON request.',415);
+ const reader=req.body?.getReader();if(!reader)throw error('Request body is missing.');
+ let size=0;const chunks=[];
+ try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>maximum){await reader.cancel();throw error('The upload is too large.',413);}chunks.push(value);}}finally{reader.releaseLock();}
+ let result;try{result=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw error('Invalid request.');}
+ if(!result||typeof result!=='object'||Array.isArray(result))throw error('Send a JSON object.');
+ return result;
+}
 export function originCheck(req){const o=req.headers.get('origin');if(o&&o!==required('APP_URL'))throw error('Request origin does not match this app.',403);}
 export async function identify(req){
  const authorization=req.headers.get('authorization');if(!authorization?.startsWith('Bearer '))throw error('Please sign in.',401);
@@ -32,3 +42,4 @@ export function seal(value,userId){const iv=randomBytes(12),c=createCipheriv('ae
 export function unseal(value,userId){const b=Buffer.from(value,'base64'),d=createDecipheriv('aes-256-gcm',key(),b.subarray(0,12));d.setAAD(Buffer.from(userId));d.setAuthTag(b.subarray(-16));return Buffer.concat([d.update(b.subarray(12,-16)),d.final()]).toString('utf8');}
 export function safe(handler){return async(req,ctx)=>{try{return await handler(req,ctx);}catch(e){return json({error:e.status?e.message:'This request could not be completed. No successful update was confirmed.'},e.status||500);}};}
 export function requestId(s){if(typeof s!=='string'||!/^[a-zA-Z0-9-]{8,80}$/.test(s))throw error('Missing valid request ID.');return s;}
+

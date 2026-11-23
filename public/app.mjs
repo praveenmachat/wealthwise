@@ -84,8 +84,9 @@ function render(){
  labelControls($('#main'));
 }
 async function api(path,body){
- if(session&&session.expires_at*1000<Date.now()+60000){const r=await authRequest('/token?grant_type=refresh_token',{refresh_token:session.refresh_token});setSession(r);}
- const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(session?{Authorization:'Bearer '+session.access_token}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw new Error(j.error||'The request could not be completed.');return j;
+ const requestUser=session?.user?.id;
+ if(session&&session.expires_at*1000<Date.now()+60000){const r=await authRequest('/token?grant_type=refresh_token',{refresh_token:session.refresh_token});if(requestUser!==session?.user?.id)throw new Error('Account changed. Please retry.');setSession(r);}
+ const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(session?{Authorization:'Bearer '+session.access_token}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});const j=await r.json();if(requestUser!==session?.user?.id)throw new Error('Account changed. Please retry in your current account.');if(!r.ok)throw new Error(j.error||'The request could not be completed.');return j;
 }
 function setSession(s){session=s;sessionStorage.setItem('ww-next-session',JSON.stringify(s));}
 async function authRequest(path,body){if(!config.supabaseUrl)throw new Error('Account service is not configured for this preview yet.');const r=await fetch(config.supabaseUrl+'/auth/v1'+path,{method:'POST',headers:{apikey:config.publishableKey,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.msg||j.message||j.error_description||'Account request failed.');return j;}
@@ -164,7 +165,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
  if(b.dataset.prompt){$('#chat-form textarea').value=b.dataset.prompt;$('#chat-form textarea').focus();return;}
  const action=b.dataset.act;if(action==='asset')assetForm();if(action==='asset-screenshot')assetScreenshotForm();if(action==='account-camera')$('#account-camera').click();if(action==='expense'||action==='income')txForm(action);if(action==='receipt')receiptForm();if(action==='account')accountForm();
  if(action==='sip')modal(`<h2>Give your goal a rhythm.</h2><form class="form" id="sip-form"><label>Plan name</label><input name="name" required><label>Mutual fund</label><select name="assetId" required><option value="">Choose a fund</option>${options(state.assets.filter(a=>a.type==='fund'&&!a.archived).map(a=>[a.id,a.name]))}</select><label>Monthly contribution</label><input name="amount" type="number" min=".01" step=".01" required><label>Currency</label><select name="currency">${options(CURRENCIES,state.settings.currency)}</select><label>Debit day (1–28)</label><input name="day" type="number" min="1" max="28" required><div class="actions"><button class="primary">Save SIP plan</button></div></form>`);
- if(action==='logout'){if(mode!=='preview')await authRequest('/logout',{}).catch(()=>{});session=null;sessionStorage.removeItem('ww-next-session');state=sampleState();mode='preview';$('#dialog').close();render();}
+ if(action==='logout'){if(mode!=='preview')await authRequest('/logout',{}).catch(()=>{});session=null;chat=[];sessionStorage.removeItem('ww-next-session');state=sampleState();mode='preview';$('#dialog').close();render();}
  if(action==='reset'){const email=$('#auth-form [name=email]');if(!email.reportValidity())return;await authRequest('/recover?redirect_to='+encodeURIComponent(location.origin+'/?recovery=1'),{email:email.value});$('#auth-message').textContent='Check your email for a reset link.';}
  if(action==='connect'){if(mode==='preview')throw new Error('Sign in to your configured private workspace before connecting Gmail.');b.disabled=true;const r=await api('gmail',{action:'connect'});location.href=r.url;}
  if(action==='disconnect'){await api('gmail',{action:'disconnect'});config.gmailConnected=false;render();notify('Gmail disconnected.');}

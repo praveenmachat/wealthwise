@@ -13,7 +13,7 @@ export function validDate(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||'')||new Date(s+'
 function label(s){s=String(s||'').trim();if(!s||s.length>160)fail('A name of 1–160 characters is required.');return s;}
 function currency(c){if(!CURRENCIES.includes(c))fail('Select a supported currency.');return c;}
 export function asset(input,id){
- if(!TYPES[input.type])fail('Select an asset or liability type.');
+ if(!Object.hasOwn(TYPES,input.type))fail('Select an asset or liability type.');
  const loan=input.type==='loan'?loanSchedule(input):input.type==='card'?cardDetails(input):{};
  const details={branch:String(input.branch||'').trim().slice(0,120),iban:String(input.iban||'').trim().slice(0,40)};
  return {id,type:input.type,name:label(input.name),amount:money(input.amount),currency:currency(input.currency),asOf:validDate(input.asOf),institution:String(input.institution||'').slice(0,120),accountRef:input.type==='card'?String(input.accountRef||'').replace(/\D/g,'').slice(-4):String(input.accountRef||'').slice(0,80),coverage:input.type==='insurance'?money(input.coverage||0):0,notes:String(input.notes||'').slice(0,1000),archived:false,...loan,...details};

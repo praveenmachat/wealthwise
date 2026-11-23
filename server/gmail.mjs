@@ -4,6 +4,7 @@ import {randomBytes,createHash} from 'node:crypto';
 import {required,db,error,seal,unseal,load,commit} from './core.mjs';
 import {extract} from './extract.mjs';
 import {verifiedGeojit,geojitProposals} from './geojit.mjs';
+import {authenticatedSender} from './mail-auth.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
 export function oauth(){return new OAuth2Client(required('GOOGLE_CLIENT_ID'),required('GOOGLE_CLIENT_SECRET'),required('APP_URL')+'/api/gmail/callback');}
 export async function begin(user){
@@ -38,7 +39,7 @@ export async function sync(userId){
    const result=await client.request({url:'https://gmail.googleapis.com/gmail/v1/users/me/messages/'+messageId,params:{format:'full'},timeout:10000}),mail=result.data;
    const headers=mail.payload.headers||[],get=n=>headers.find(h=>h.name.toLowerCase()===n)?.value||'';
    const sender=(get('from').match(/<([^>]+)>/)?.[1]||get('from')).toLowerCase().trim();
-   const authentication=get('authentication-results');const authenticated=/dkim=pass/i.test(authentication)&&/dmarc=pass/i.test(authentication);
+   const authenticated=authenticatedSender(headers,sender);
    const html=flatten(mail.payload,'text/html').join('\n');let text=flatten(mail.payload,'text/plain').join('\n');
    if(!text&&html)text=emailText(html);
    const isGeojit=sender==='info@geojit.com'&&/Holding\s+Statement/i.test(get('subject'));
