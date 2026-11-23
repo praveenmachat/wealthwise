@@ -9,7 +9,11 @@ let state=emptyState(),revision=0,session=null,config={},mode='preview',page='ho
 try{session=JSON.parse(sessionStorage.getItem('ww-next-session'));}catch{}
 const nav=[['home','◫','Overview'],['assets','◇','My portfolio'],['activity','↗','Activity'],['assistant','✦','Assistant'],['review','☑','Review inbox'],['settings','⚙','Connections']];
 const symbols={bank:'▤',fd:'◷',property:'⌂',metal:'◇',vehicle:'↗',stock:'⌁',fund:'◫',insurance:'♧',loan:'↙',card:'▱',other:'◌'};
-const fmt=(n,c=state.settings.currency)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:c,maximumFractionDigits:2}).format(n/100);
+const fmt=(n,c=state.settings.currency)=>{
+ const value=n/100,absolute=Math.abs(value);
+ if(c==='INR'&&absolute>=100000){const crore=absolute>=10000000;return (value<0?'−':'')+'₹'+(absolute/(crore?10000000:100000)).toFixed(2)+(crore?' Cr':' Lakh');}
+ return new Intl.NumberFormat('en-IN',{style:'currency',currency:c,maximumFractionDigits:2}).format(value);
+};
 const options=(values,selected)=>values.map(x=>`<option value="${esc(Array.isArray(x)?x[0]:x)}" ${(Array.isArray(x)?x[0]:x)===selected?'selected':''}>${esc(Array.isArray(x)?x[1]:x)}</option>`).join('');
 function notify(msg){$('#notice').textContent=msg;$('#notice').classList.add('show');clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').classList.remove('show'),6500);}
 function labelControls(root){for(const [i,label]of [...root.querySelectorAll('label:not([for])')].entries()){const input=label.querySelector('input,select,textarea')||label.nextElementSibling;if(input?.matches('input,select,textarea')){if(!input.id)input.id='field-'+(root.id||'main')+'-'+i;label.htmlFor=input.id;}}}
