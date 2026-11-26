@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {TYPES,LIABILITY,totals} from '../public/domain.mjs';
-import {inrAmount} from '../public/currency.mjs';
+import {convertedAmount,inrAmount} from '../public/currency.mjs';
 const code=readFileSync(new URL('../public/app.mjs',import.meta.url),'utf8');
 function render(filter,items){
- const context={assetFilter:filter,TYPES,LIABILITY,totals,inrAmount,fx:{rates:{AED:25},asOf:'2026-11-22'},esc:String,fmt:(n,c)=>c+' '+(n/100).toFixed(2),accountRow:a=>'<row>'+a.name+' '+a.currency+' '+a.amount+'</row>'};
+ const context={assetFilter:filter,TYPES,LIABILITY,totals,convertedAmount,inrAmount,fx:{rates:{AED:25},asOf:'2026-11-22'},esc:String,fmt:(n,c)=>c+' '+(n/100).toFixed(2),accountRow:a=>'<row>'+a.name+' '+a.currency+' '+a.amount+'</row>'};
  vm.createContext(context);
  vm.runInContext(code.slice(code.indexOf('function inrRow('),code.indexOf('function portfolio(){')),context);
  return {rows:context.portfolioRows(items),summary:context.portfolioSummary(items)};

@@ -1,7 +1,7 @@
 import {emailAddress,gmailImportPrompt} from './gmail-import.mjs';
 import {configureAssetFields} from './asset-fields.mjs';
 import {installImagePaste,selectedImage} from './image-input.mjs';
-import {inrAmount} from './currency.mjs';
+import {convertedAmount,inrAmount} from './currency.mjs';
 import {TYPES,CURRENCIES,LIABILITY,emptyState,sampleState,totals,cashflow,mutate,applyProposal,dueLoans,asset} from './domain.mjs';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Date().toLocaleDateString('en-CA'),uid=()=>crypto.randomUUID();
@@ -24,12 +24,22 @@ function accountRow(a){return `<div class="list-row"><span class="row-icon">${sy
 function txRow(t){return `<div class="list-row"><span class="row-icon">${t.kind==='income'?'↙':t.kind==='transfer'?'⇄':'↗'}</span><div class="row-info"><strong>${esc(t.name)}</strong><small>${esc(t.category)} · ${esc(t.date)}</small></div><div class="row-value ${t.kind==='income'?'positive':''}">${t.kind==='income'?'+':t.kind==='expense'?'−':''}${fmt(t.amount,t.currency)}<small>${t.kind}</small></div><button class="edit" data-tx-edit="${t.id}">Edit</button></div>`;}
 function empty(text){return `<div class="empty"><span class="big">◌</span>${text}</div>`;}
 function home(){
- const cur=state.settings.currency,t=totals(state,cur),flow=cashflow(state,cur,today().slice(0,7)),assets=state.assets.filter(a=>!a.archived&&a.currency===cur),pending=state.proposals.filter(p=>p.status==='pending').length;
+ const cur=state.settings.currency,flow=cashflow(state,cur,today().slice(0,7)),assets=state.assets.filter(a=>!a.archived&&a.currency===cur),pending=state.proposals.filter(p=>p.status==='pending').length;
+ const active=state.assets.filter(a=>!a.archived);
+ const summary=convertedSummary(active,cur);
+ const localAssets=totals({assets},cur).assets;
+ const debtByCurrency=[...new Set(active.filter(a=>LIABILITY.has(a.type)).map(a=>a.currency))]
+   .map(currency=>fmt(totals({assets:active},currency).liabilities,currency)).join(' + ');
+ const heroValue=value=>value===null?'Unavailable':fmt(value,cur);
+ const hasForeignBalances=active.some(a=>a.amount!==0&&a.currency!==cur);
+ const rateNote=summary.net===null
+   ?'Exchange rates unavailable. <button data-act="rates">Retry conversion</button>'
+   :hasForeignBalances?'Converted balances are estimates. Rates as of '+esc(fx.asOf.slice(0,10))+'.':'Assets minus liabilities.';
  const colors=['#184e45','#91aa83','#cfb784','#b0c3b2','#708f89','#dfcfad'];const types=[...new Set(assets.filter(a=>!LIABILITY.has(a.type)).map(a=>a.type))];
  return heading('A little clarity. A lot of possibility.','Your everyday money and your bigger picture, in one place.')+
- `<section class="hero"><div><p class="eyebrow">YOUR NET WORTH · ${cur}</p><div class="net-value">${fmt(t.net)}</div><div class="sub">Assets minus liabilities. ${cur} balances only.</div></div><div class="hero-breakdown"><div><small>TOTAL ASSETS</small><strong>${fmt(t.assets)}</strong></div><div><small>YOU OWE</small><strong>${fmt(t.liabilities)}</strong></div></div></section>
+ `<section class="hero"><div><p class="eyebrow">YOUR NET WORTH · ${cur}</p><div class="net-value">${heroValue(summary.net)}</div><div class="sub">${rateNote}</div></div><div class="hero-breakdown"><div><small>TOTAL ASSETS</small><strong>${heroValue(summary.assets)}</strong></div><div><small>YOU OWE</small><strong>${summary.liabilities===null?debtByCurrency:heroValue(summary.liabilities)}</strong></div></div></section>
  <section class="quick-actions" aria-label="Quick capture"><button class="quick" data-act="receipt"><span class="quick-icon">▧</span><span>Scan a bill<small>Capture it. We'll help sort it.</small></span></button><button class="quick" data-act="expense"><span class="quick-icon">−</span><span>Add expense<small>A little spent, clearly tracked.</small></span></button><button class="quick" data-act="income"><span class="quick-icon">+</span><span>Add income<small>Make every inflow count.</small></span></button></section>
- <div class="grid"><div><section class="panel"><div class="panel-heading"><h2>Your wealth, at a glance</h2><button data-page="assets">View portfolio ↗</button></div><div class="bar">${types.map((type,i)=>`<span style="width:${t.assets?assets.filter(a=>a.type===type).reduce((s,a)=>s+a.amount,0)/t.assets*100:0}%;background:${colors[i%colors.length]}"></span>`).join('')}</div><div class="legend">${types.map((type,i)=>`<span><i style="background:${colors[i%colors.length]}"></i>${TYPES[type]}</span>`).join('')}</div>${assets.slice(0,3).map(accountRow).join('')||empty('Start with a bank account or an investment.')}<div class="stats-line">${assets.length} assets and liabilities · Values keep their original currency</div></section><section class="panel"><div class="panel-heading"><h2>Recent activity</h2><button data-page="activity">View all ↗</button></div>${[...state.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3).map(txRow).join('')||empty('Your next everyday moment starts here.')}</section></div>
+ <div class="grid"><div><section class="panel"><div class="panel-heading"><h2>Your wealth, at a glance</h2><button data-page="assets">View portfolio ↗</button></div><div class="bar">${types.map((type,i)=>`<span style="width:${localAssets?assets.filter(a=>a.type===type).reduce((s,a)=>s+a.amount,0)/localAssets*100:0}%;background:${colors[i%colors.length]}"></span>`).join('')}</div><div class="legend">${types.map((type,i)=>`<span><i style="background:${colors[i%colors.length]}"></i>${TYPES[type]}</span>`).join('')}</div>${assets.slice(0,3).map(accountRow).join('')||empty('Start with a bank account or an investment.')}<div class="stats-line">${assets.length} assets and liabilities · Values keep their original currency</div></section><section class="panel"><div class="panel-heading"><h2>Recent activity</h2><button data-page="activity">View all ↗</button></div>${[...state.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3).map(txRow).join('')||empty('Your next everyday moment starts here.')}</section></div>
  <div><section class="panel"><div class="panel-heading"><h2>This month's flow</h2><span class="badge">${new Date().toLocaleDateString('en',{month:'short',year:'numeric'})}</span></div><div class="metric"><div><small>↙ Money in</small><strong class="positive">${fmt(flow.income)}</strong></div><div><small>↗ Money out</small><strong>${fmt(flow.expense)}</strong></div></div><div class="bar"><span style="width:${flow.income?Math.min(100,flow.expense/flow.income*100):0}%;background:#cfb784"></span></div><div class="sub">${flow.income?fmt(flow.income-flow.expense)+' remaining from recorded income.':'Add income and expenses to see your monthly flow.'} Transfers are excluded.</div></section><section class="panel"><div class="panel-heading"><h2>✦ A helping hand</h2><span class="badge amber">${pending} to review</span></div><p class="sub">Your assistant can turn statements and receipts into updates. You stay in control of anything uncertain.</p><button class="primary" data-page="assistant">Talk to your assistant ↗</button><div class="callout"><strong>Connect once. Stay up to date.</strong>Choose the financial emails to check. See the source behind every proposed update.<br><button data-page="settings">Manage Gmail connection →</button></div></section></div></div>`;
 }
 function inrRow(a){
@@ -42,11 +52,17 @@ function portfolioRows(items){
  const stocks=items.filter(a=>a.type==='stock'&&a.currency==='INR');
  return items.filter(a=>!stocks.includes(a)).map(inrRow).join('')+(stocks.length?'<div class="list-row"><span class="row-icon">⌁</span><div class="row-info"><strong>Indian stocks</strong><small>'+stocks.length+' holdings</small></div><div class="row-value">'+fmt(stocks.reduce((sum,a)=>sum+a.amount,0),'INR')+'</div><button data-filter="stock">View stocks</button></div>':'');
 }
+function convertedSummary(items,currency){
+ const converted=items.map(a=>({...a,amount:convertedAmount(a.amount,a.currency,currency,fx),currency}));
+ const summary=totals({assets:converted},currency);
+ const assetsMissing=converted.some(a=>a.amount===null&&!LIABILITY.has(a.type));
+ const debtsMissing=converted.some(a=>a.amount===null&&LIABILITY.has(a.type));
+ return {assets:assetsMissing?null:summary.assets,liabilities:debtsMissing?null:summary.liabilities,net:assetsMissing||debtsMissing?null:summary.net};
+}
 function portfolioSummary(items){
  if(assetFilter==='all'){
- const converted=items.map(a=>({...a,amount:inrAmount(a.amount,a.currency,fx),currency:'INR'}));
- if(converted.some(a=>a.amount===null))return '<section class="panel"><h2>Portfolio summary · INR</h2><p>Exchange rates are unavailable. Combined totals will appear when rates load.</p><button data-act="rates">Retry conversion</button></section>';
- const t=totals({assets:converted},'INR');
+ const t=convertedSummary(items,'INR');
+ if(t.net===null)return '<section class="panel"><h2>Portfolio summary · INR</h2><p>Exchange rates are unavailable. Combined totals will appear when rates load.</p><button data-act="rates">Retry conversion</button></section>';
  return '<section class="panel"><h2>Portfolio summary · INR</h2><div class="portfolio-summary"><div><small>Total assets</small><strong>'+fmt(t.assets,'INR')+'</strong></div><div><small>Total liabilities</small><strong>'+fmt(t.liabilities,'INR')+'</strong></div><div><small>Net value</small><strong>'+fmt(t.net,'INR')+'</strong></div></div><p class="sub">'+items.length+' records · '+(fx?'Exchange rates as of '+esc(fx.asOf.slice(0,10))+' · <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates by ExchangeRate-API</a>':'All balances are in INR')+'. Original balances are preserved for editing. Converted values are estimates.</p></section>';
  }
 
