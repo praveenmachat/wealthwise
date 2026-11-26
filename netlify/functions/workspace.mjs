@@ -1,3 +1,4 @@
+import {stageEmailImport} from '../../server/chatgpt-import.mjs';
 import {safe,identify,body,originCheck,load,commit,json,db,error,requestId,limit} from '../../server/core.mjs';
 import {mutate,applyProposal} from '../../public/domain.mjs';
 export default safe(async req=>{
@@ -7,6 +8,11 @@ export default safe(async req=>{
  originCheck(req);await limit(user.id,'writes',120);const b=await body(req),id=requestId(b.requestId);
  if(row.data.audit.some(a=>a.id===id))return json(row);
  if(b.revision!==row.revision)throw error('Refresh to load the latest changes before saving.',409);
+ if(Object.hasOwn(b,'emailImport')){
+ const result=stageEmailImport(row.data,b.emailImport,new Date().toISOString());
+ const saved=result.imported?await commit(user.id,result.data,row.revision):row;
+ return json({...saved,imported:result.imported});
+ }
  let next;
  try{
  if(b.decision){const p=row.data.proposals.find(p=>p.id===b.proposalId&&p.status==='pending');if(!p)throw error('Proposal is no longer pending.',409);

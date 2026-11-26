@@ -1,3 +1,4 @@
+import {emailAddress,gmailImportPrompt} from './gmail-import.mjs';
 import {configureAssetFields} from './asset-fields.mjs';
 import {installImagePaste,selectedImage} from './image-input.mjs';
 import {inrAmount} from './currency.mjs';
@@ -74,7 +75,23 @@ function openProposalReview(id){
  const source=document.createElement('p');source.className='sub';source.textContent='Source: '+(p.source||'Assistant')+'. '+(p.evidence||'');f.prepend(source);
 }
 function review(){return heading('A quick second look.','Check the details. Keep your financial picture accurate.')+state.proposals.filter(p=>p.status==='pending').map(p=>`<section class="panel"><div class="panel-heading"><h2>${esc(p.title||'Proposed update')}</h2><span class="badge amber">Needs review</span></div><p class="sub">${esc(p.reason||'Please verify the extracted details.')}</p>${proposalSummary(p)}<p class="source">Source: ${esc(p.source)} · ${esc(p.createdAt)}<br>${esc(p.evidence||'')}</p><div class="review-actions">${p.command.action==='asset.save'?'<button class="primary" data-proposal-edit="'+p.id+'">Review and approve</button>':'<button class="primary" data-approve="'+p.id+'">Approve update</button>'}<button data-reject="${p.id}">Dismiss</button></div></section>`).join('')+(state.proposals.some(p=>p.status==='pending')?'':`<section class="panel">${empty('All clear. New uncertain updates will appear here.')}</section>`)+`<section class="panel"><div class="panel-heading"><h2>Change history</h2></div>${state.audit.slice(0,20).map(a=>`<div class="list-row"><span class="row-icon">✓</span><div class="row-info"><strong>${esc(a.after?.name||a.action)}</strong><small>${esc(a.source)} · ${new Date(a.at).toLocaleString()}</small></div><span class="badge">Saved</span></div>`).join('')||empty('Every saved change leaves a record here.')}</section>`;}
-function settings(){return heading('Connected, on your terms.','Choose what to track and what your assistant can update.')+`<div class="grid"><section class="panel"><div class="panel-heading"><h2>Gmail</h2><span class="badge">${config.gmailConnected?'Connected':'Not connected'}</span></div><p class="sub">Read financial statements and transaction emails on the server. No copying or pasting. Gmail access is read-only; we cannot send or delete your mail.</p><p class="sub">Google’s permission covers your mailbox. Your filter below limits which messages WealthWise processes. Relevant email content is sent to the AI provider for extraction.</p><div class="review-actions"><button class="primary" data-act="connect">${config.gmailConnected?'Reconnect Gmail':'Connect Gmail'} ↗</button><button data-act="sync">Sync now</button>${config.gmailConnected?'<button data-act="disconnect">Disconnect</button>':''}</div><div class="callout">${config.gmailConnected?'Your connection is private to your account.':'Connecting requires your Google consent. Signing in to WealthWise does not give it access to Gmail.'}</div><p class="sub">Last check: ${esc(config.lastSync||'No completed sync')}</p></section><section class="panel"><h2>Your preferences</h2><form class="form" id="settings-form"><label>Home currency</label><select name="currency">${options(CURRENCIES,state.settings.currency)}</select><label>Your timezone</label><input name="timezone" value="${esc(state.settings.timezone)}" required><label>Financial email filter</label><input name="gmailQuery" value="${esc(state.settings.gmailQuery)}" required><p>For example: label:Finance newer_than:30d</p><label>Trusted statement senders (comma-separated)</label><input name="trustedSenders" value="${esc(state.settings.trustedSenders.join(', '))}"><label class="check"><input type="checkbox" name="autoSave" ${state.settings.autoSave?'checked':''}>Auto-save independently verified updates</label><p>Uncertain values always go to the review inbox. Model confidence alone is not verification.</p><button class="primary" type="submit">Save preferences</button></form></section></div><section class="panel"><h2>Biometric sign-in</h2><p class="sub">Add a passkey on this phone. Your device can verify you with fingerprint, face unlock, or its screen lock. WealthWise never receives your biometric data.</p><button class="primary" data-act="passkey-register" ${!session||!authClient||!window.PublicKeyCredential?'disabled':''}>Add passkey on this device</button><p class="sub">${!window.PublicKeyCredential?'Passkeys are not supported by this browser.':!authClient?'Passkey setup is unavailable until the app is configured.':'Register while signed in, then use “Sign in with passkey” next time.'}</p></section><section class="panel"><h2>Your data belongs to you</h2><p class="sub">Export your portfolio, transactions and change history.</p><button data-act="export">Download my data</button></section>`;}
+function gmailImportPanel(){return `<section class="panel"><h2>Import from Gmail with ChatGPT</h2>
+<p class="sub">Optional. Connect Gmail in ChatGPT using a paid plan with Gmail available. Review the generated prompt before copying it. It includes WealthWise account names and IDs to help match balances.</p>
+<form id="gmail-prompt-form" class="form">
+<label>Sender email addresses (comma-separated)</label>
+<input name="senders" required maxlength="1000" placeholder="statements@example.com, alerts@example.com">
+<label>Days to look back</label><input name="days" type="number" min="1" max="90" value="30" required>
+<button type="submit">Generate prompt</button>
+<label>Prompt to copy into ChatGPT</label><textarea id="gmail-import-prompt" rows="6" readonly></textarea>
+<p><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Open ChatGPT</a></p>
+</form>
+<form id="gmail-file-form" class="form">
+<label>JSON file from ChatGPT</label><input name="file" type="file" accept=".json,application/json" required>
+<button class="primary" type="submit">Send to review inbox</button>
+</form>
+${config.gmailConnected?'<p class="sub">An older WealthWise Gmail connection is still linked.</p><button data-act="disconnect">Disconnect old Gmail connection</button>':''}
+</section>`;}
+function settings(){return heading('Connected, on your terms.','Choose what to track and what your assistant can update.')+`<div class="grid">${gmailImportPanel()}<section class="panel"><h2>Your preferences</h2><form class="form" id="settings-form"><label>Home currency</label><select name="currency">${options(CURRENCIES,state.settings.currency)}</select><label>Your timezone</label><input name="timezone" value="${esc(state.settings.timezone)}" required><label class="check"><input type="checkbox" name="autoSave" ${state.settings.autoSave?'checked':''}>Auto-save independently verified updates</label><p>Uncertain values always go to the review inbox. Model confidence alone is not verification.</p><button class="primary" type="submit">Save preferences</button></form></section></div><section class="panel"><h2>Biometric sign-in</h2><p class="sub">Add a passkey on this phone. Your device can verify you with fingerprint, face unlock, or its screen lock. WealthWise never receives your biometric data.</p><button class="primary" data-act="passkey-register" ${!session||!authClient||!window.PublicKeyCredential?'disabled':''}>Add passkey on this device</button><p class="sub">${!window.PublicKeyCredential?'Passkeys are not supported by this browser.':!authClient?'Passkey setup is unavailable until the app is configured.':'Register while signed in, then use “Sign in with passkey” next time.'}</p></section><section class="panel"><h2>Your data belongs to you</h2><p class="sub">Export your portfolio, transactions and change history.</p><button data-act="export">Download my data</button></section>`;}
 function render(){
  page=location.hash.slice(1)||'home';if(!nav.some(n=>n[0]===page))page='home';
  for(const selector of ['#navigation','#mobile-nav'])$(selector).innerHTML=nav.filter(n=>selector!=='#mobile-nav'||n[0]!=='settings').map(([id,sym,name])=>`<button data-page="${id}" class="${page===id?'active':''}" ${page===id?'aria-current="page"':''}><span class="symbol">${sym}</span><span>${selector==='#mobile-nav'?({home:'Home',assets:'Portfolio',activity:'Activity',assistant:'Assistant',review:'Review'}[id]):name}</span>${id==='review'&&state.proposals.filter(p=>p.status==='pending').length?'<span class="badge">'+state.proposals.filter(p=>p.status==='pending').length+'</span>':''}</button>`).join('');
@@ -167,9 +184,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
  if(action==='sip')modal(`<h2>Give your goal a rhythm.</h2><form class="form" id="sip-form"><label>Plan name</label><input name="name" required><label>Mutual fund</label><select name="assetId" required><option value="">Choose a fund</option>${options(state.assets.filter(a=>a.type==='fund'&&!a.archived).map(a=>[a.id,a.name]))}</select><label>Monthly contribution</label><input name="amount" type="number" min=".01" step=".01" required><label>Currency</label><select name="currency">${options(CURRENCIES,state.settings.currency)}</select><label>Debit day (1–28)</label><input name="day" type="number" min="1" max="28" required><div class="actions"><button class="primary">Save SIP plan</button></div></form>`);
  if(action==='logout'){if(mode!=='preview')await authRequest('/logout',{}).catch(()=>{});session=null;chat=[];sessionStorage.removeItem('ww-next-session');state=sampleState();mode='preview';$('#dialog').close();render();}
  if(action==='reset'){const email=$('#auth-form [name=email]');if(!email.reportValidity())return;await authRequest('/recover?redirect_to='+encodeURIComponent(location.origin+'/?recovery=1'),{email:email.value});$('#auth-message').textContent='Check your email for a reset link.';}
- if(action==='connect'){if(mode==='preview')throw new Error('Sign in to your configured private workspace before connecting Gmail.');b.disabled=true;const r=await api('gmail',{action:'connect'});location.href=r.url;}
  if(action==='disconnect'){await api('gmail',{action:'disconnect'});config.gmailConnected=false;render();notify('Gmail disconnected.');}
- if(action==='sync'){if(mode==='preview')throw new Error('Connect a real account and Gmail before syncing.');b.disabled=true;notify('Checking your selected financial emails…');const r=await api('gmail',{action:'sync'});state=r.data;revision=r.revision;config.lastSync=r.lastSync;render();notify(r.message);}
  if(action==='rates'){await loadRates();}
  if(action==='export'){const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='wealthwise-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  }catch(err){notify(err.message);}finally{b.disabled=false;}});
@@ -192,7 +207,25 @@ document.addEventListener('submit',async e=>{e.preventDefault();const f=e.target
  if(f.id==='proposal-edit-form'){
  const r=await api('workspace',{decision:'approve',proposalId:f.dataset.proposal,data,revision,requestId:uid()});state=r.data;revision=r.revision;$('#dialog').close();render();notify('Approved and saved to your account.');
  }
- if(f.id==='settings-form'){data.autoSave=f.elements.autoSave.checked;await save({action:'settings.save',data});}
+ if(f.id==='gmail-prompt-form'){
+ const senders=[...new Set(data.senders.split(',').map(value=>value.trim().toLowerCase()).filter(Boolean))];
+ const days=Number(data.days);
+ if(!senders.length||senders.length>20||senders.some(value=>!emailAddress.test(value)))throw new Error('Enter up to 20 valid email addresses.');
+ if(!Number.isInteger(days)||days<1||days>90)throw new Error('Enter a lookback of 1 to 90 days.');
+ const prompt=$('#gmail-import-prompt');
+ prompt.value=gmailImportPrompt(senders,days,state.assets);
+ prompt.focus();prompt.select();
+ }
+ if(f.id==='gmail-file-form'){
+ if(mode==='preview'||!session)throw new Error('Sign in to import into your WealthWise account.');
+ if(data.file.size>128000)throw new Error('Choose a JSON file under 128 KB.');
+ let file;
+ try{file=JSON.parse(await data.file.text());}catch{throw new Error('Choose a valid JSON file from ChatGPT.');}
+ const r=await api('workspace',{emailImport:file,revision,requestId:uid()});
+ state=r.data;revision=r.revision;location.hash='review';render();
+ notify(r.imported?'Updates added to your review inbox.':'No new updates were found in this file.');
+ }
+ if(f.id==='settings-form'){data.autoSave=f.elements.autoSave.checked;data.gmailQuery=state.settings.gmailQuery;data.trustedSenders=state.settings.trustedSenders.join(', ');await save({action:'settings.save',data});}
  if(f.id==='chat-form'){chat.push({role:'user',text:data.message});await sendAssistant(data.message);}
  if(f.id==='receipt-form'){const image=await accountImageData(selectedImage(f));await sendAssistant(data.notes||'Read this bill and propose an expense.',image);$('#dialog').close();location.hash='review';}
  if(f.id==='auth-form'){const intent=button.value;const r=await authRequest(intent==='signup'?'/signup?redirect_to='+encodeURIComponent(location.origin):'/token?grant_type=password',{email:data.email,password:data.password});if(intent==='signup'&&!r.access_token){$('#auth-message').textContent='Check your email and verify your account, then sign in.';return;}setSession(r);await loadCloud();$('#dialog').close();render();}
