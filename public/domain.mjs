@@ -47,7 +47,7 @@ function nextMonth(date,anchor){
 export function transaction(input,id){
  if(!['expense','income','transfer'].includes(input.kind))fail('Select expense, income or transfer.');
  const amount=money(input.amount);if(amount===0)fail('Amount must be greater than zero.');
- return {id,kind:input.kind,name:label(input.name),amount,currency:currency(input.currency),date:validDate(input.date),category:String(input.category||'Other').slice(0,80),reference:String(input.reference||'').slice(0,120),accountId:input.accountId||null,notes:String(input.notes||'').slice(0,1000)};
+ return {id,kind:input.kind,name:label(input.name),amount,currency:currency(input.currency),date:validDate(input.date),category:String(input.category||'Other').slice(0,80),reference:String(input.reference||'').slice(0,120),accountId:input.accountId||null,...(input.kind==='transfer'&&['in','out'].includes(input.direction)?{direction:input.direction}:{}),notes:String(input.notes||'').slice(0,1000)};
 }
 export function totals(state,cur){
  const active=state.assets.filter(a=>!a.archived&&a.currency===cur);
@@ -90,7 +90,7 @@ export function mutate(current,command,meta){
    const prior=s.assets.find(a=>a.id===command.id);if(!prior)fail('Asset not found.');before=structuredClone(prior);prior.archived=true;after=prior;
  }else if(command.action==='transaction.save'){
    const prior=s.transactions.find(t=>t.id===command.id);if(command.id&&!prior)fail('Transaction not found.');
-   after=transaction(command.data,prior?.id||id);before=prior||null;
+   after=transaction({direction:prior?.direction,...command.data},prior?.id||id);before=prior||null;
    if(s.transactions.some(t=>t.id!==after.id&&fingerprint(t)===fingerprint(after)))fail('This transaction appears to be already recorded. Review the existing entry.');
    if(prior)s.transactions[s.transactions.indexOf(prior)]=after;else s.transactions.push(after);
  }else if(command.action==='plan.save'){

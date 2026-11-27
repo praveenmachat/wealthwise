@@ -1,3 +1,4 @@
+import {saveBankEntry} from '../../public/bank-sms.mjs';
 import {stageEmailImport} from '../../server/chatgpt-import.mjs';
 import {safe,identify,body,originCheck,load,commit,json,db,error,requestId,limit} from '../../server/core.mjs';
 import {mutate,applyProposal} from '../../public/domain.mjs';
@@ -30,6 +31,8 @@ export default safe(async req=>{
  }
  else if(b.decision==='dismiss'){next=structuredClone(row.data);next.proposals.find(x=>x.id===p.id).status='dismissed';next.audit.unshift({id,at:new Date().toISOString(),action:'proposal.dismiss',source:'manual',before:p,after:null});}
  else throw error('Invalid review decision.');
+ }else if(b.command?.action==='bank-sms.import'){
+ next=saveBankEntry(row.data,b.command.data,{id,now:new Date().toISOString(),source:'Bank SMS'});
  }else next=mutate(row.data,b.command,{id,now:new Date().toISOString()});
  }catch(e){throw error(e.message,e.status||400);}
  return json(await commit(user.id,next,row.revision));
