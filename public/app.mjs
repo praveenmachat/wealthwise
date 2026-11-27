@@ -1,4 +1,4 @@
-import {checkBankEntry,readBankSms,saveBankEntry} from './bank-sms.mjs';
+import {checkBankEntry,readBankSms,saveBankEntry,smsAccount} from './bank-sms.mjs';
 import {emailAddress,gmailImportPrompt} from './gmail-import.mjs';
 import {configureAssetFields} from './asset-fields.mjs';
 import {installImagePaste,selectedImage} from './image-input.mjs';
@@ -176,18 +176,18 @@ function assetForm(id,draft){const a=draft||state.assets.find(a=>a.id===id);moda
 let bankSmsDraft;
 function bankSmsForm(){
  bankSmsDraft=null;
- modal(`<h2>Import bank SMS</h2><form class="form" id="sms-paste-form"><label>Bank transaction message</label>
+ modal(`<h2>Import bank SMS</h2><form class="form" id="sms-paste-form"><label>Bank or credit card transaction alert</label>
  <textarea name="sms" maxlength="3000" rows="5" required></textarea>
  <p>Paste a transaction alert. The message is processed on this device.</p>
  <button class="primary" type="submit">Extract details</button></form>`);
 }
 function bankSmsDetails(draft){
- const accounts=state.assets.filter(a=>!a.archived&&a.type==='bank');
+ const accounts=state.assets.filter(smsAccount);
  const selected=draft.accountId||'';
- const accountOptions=accounts.map(a=>[a.id,a.name+' ('+a.currency+')']);
- modal(`<h2>Confirm bank transaction</h2><form class="form" id="sms-details-form">
- <label>Bank account</label><select name="accountId" required>${options([['','Choose an account'],...accountOptions],selected)}</select>
- ${accounts.length?'':'<p>Add a bank account in Portfolio before importing.</p>'}
+ const accountOptions=accounts.map(a=>[a.id,a.name+' · '+TYPES[a.type]+' ('+a.currency+')']);
+ modal(`<h2>Confirm transaction</h2><form class="form" id="sms-details-form">
+ <label>Bank account or credit card</label><select name="accountId" required>${options([['','Choose an account'],...accountOptions],selected)}</select>
+ ${accounts.length?'':'<p>Add a bank account or credit card in Portfolio before importing.</p>'}
  <label>Transaction type</label><select name="kind" required>${options([['','Choose a type'],['income','Income'],['expense','Expense'],['transfer','Transfer']],draft.kind)}</select>
  <label>Transfer direction (for transfers)</label><select name="direction">${options([['','Choose a direction'],['in','Money in'],['out','Money out']],draft.direction)}</select>
  <label>Description</label><input name="name" maxlength="160" required value="${esc(draft.name||'')}">
@@ -196,23 +196,26 @@ function bankSmsDetails(draft){
  <label>Transaction date</label><input name="date" type="date" required value="${esc(draft.date||'')}">
  <label>Category (optional)</label><input name="category" maxlength="80" value="${esc(draft.category||'')}">
  <label>Transaction reference (optional)</label><input name="reference" maxlength="120" value="${esc(draft.reference||'')}">
- <label>Reported balance (if present)</label><input name="balance" type="number" min="0" step="0.01" value="${esc(draft.balance||'')}">
- <p>Leave the balance blank to record the transaction only.</p>
+ <label>Reported bank balance (if present)</label><input name="balance" type="number" min="0" step="0.01" value="${esc(draft.balance||'')}">
+ <label>Card outstanding balance (if present)</label><input name="outstanding" type="number" min="0" step="0.01" value="${esc(draft.outstanding||'')}">
+ <label>Card available credit (if present)</label><input name="availableCredit" type="number" min="0" step="0.01" value="${esc(draft.availableCredit||'')}">
+ <p>For a credit card, enter outstanding only if the alert states what you owe. Available credit can be saved alongside a confirmed outstanding balance.</p>
  <button class="primary" type="submit">Review transaction</button></form>`);
 }
 function bankSmsReview(draft,result){
  bankSmsDraft=draft;
- const {account,entry,reported,expected,difference,alerts,stale}=result;
+ const {account,entry,reported,credit,expected,difference,alerts,stale}=result;
  const check=reported!==undefined&&!stale;
  const needsConfirmation=check&&(difference!==0||alerts.length>0);
- const explain=difference===0?'The recorded activity tallies.':difference<0
-   ?'The reported balance is lower. Check for missing expenses, fees or outgoing transfers.'
-   :'The reported balance is higher. Check for missing income or incoming transfers.';
- modal(`<h2>Review bank transaction</h2><form class="form" id="sms-review-form">
+ const card=account.type==='card';
+ const explain=difference===null?'There is no comparable starting balance.':difference===0?'The recorded activity tallies.':difference<0
+   ?card?'Outstanding is lower. Check for missing payments or credits.':'The reported balance is lower. Check for missing expenses, fees or outgoing transfers.'
+   :card?'Outstanding is higher. Check for missing purchases or fees.':'The reported balance is higher. Check for missing income or incoming transfers.';
+ modal(`<h2>Review transaction</h2><form class="form" id="sms-review-form">
  <p>${esc(account.name)} · ${esc(entry.name)} · ${fmt(entry.amount,entry.currency)} · ${entry.date}</p>
  ${check?`<div class="callout">Saved balance (${esc(account.asOf)}) ${fmt(account.amount,entry.currency)}<br>
- Expected balance ${fmt(expected,entry.currency)}<br>SMS balance ${fmt(reported,entry.currency)}<br>
- Difference ${fmt(difference,entry.currency)}<br>${explain}</div>`:stale?'<p>The alert is older than the saved balance. You can save the transaction only.</p>':'<p>No balance was supplied. You can save the transaction only.</p>'}
+ Expected balance ${expected===null?'Unavailable':fmt(expected,entry.currency)}<br>SMS balance ${fmt(reported,entry.currency)}<br>
+ Difference ${difference===null?'Unavailable':fmt(difference,entry.currency)}<br>${explain}${credit==null?'':'<br>Available credit '+fmt(credit,entry.currency)}</div>`:stale?'<p>The alert is older than the saved balance. You can save the transaction only.</p>':'<p>No bank balance or card outstanding balance was supplied. You can save the transaction only.</p>'}
  ${alerts?.length?`<ul>${alerts.map(alert=>`<li>${esc(alert)}</li>`).join('')}</ul>`:''}
  ${needsConfirmation?'<label class="check"><input name="confirmDifference" type="checkbox">I checked the difference and want to use the SMS balance.</label>':''}
  <div class="actions"><button type="button" data-act="sms-edit">Edit details</button>
